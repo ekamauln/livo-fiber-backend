@@ -19,6 +19,14 @@ type User struct {
 	Sessions []Session `gorm:"foreignKey:UserID" json:"-"`
 }
 
+type UserRole struct {
+	UserID uint `gorm:"not null" json:"user_id"`
+	RoleID uint `gorm:"not null" json:"role_id"`
+
+	User User `gorm:"foreignKey:UserID" json:"-"`
+	Role Role `gorm:"foreignKey:RoleID" json:"-"`
+}
+
 // UserResponse represents the user data returned in API responses
 type UserResponse struct {
 	ID        uint     `json:"id"`
@@ -30,14 +38,6 @@ type UserResponse struct {
 	CreatedAt string   `json:"createdAt"`
 	UpdatedAt string   `json:"updatedAt"`
 	Roles     []string `json:"roles"`
-}
-
-type UserRole struct {
-	UserID uint `gorm:"not null" json:"user_id"`
-	RoleID uint `gorm:"not null" json:"role_id"`
-
-	User User `gorm:"foreignKey:UserID" json:"-"`
-	Role Role `gorm:"foreignKey:RoleID" json:"-"`
 }
 
 // ToResponse converts a User model to a UserResponse

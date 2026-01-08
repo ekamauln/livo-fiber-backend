@@ -39,11 +39,11 @@ type CreateUserRequest struct {
 }
 
 type AssignRoleRequest struct {
-	RoleName string `json:"roleName" binding:"required" example:"guest"`
+	RoleName string `json:"roleName" validate:"required" example:"guest"`
 }
 
 type RemoveRoleRequest struct {
-	RoleName string `json:"roleName" binding:"required" example:"guest"`
+	RoleName string `json:"roleName" validate:"required" example:"guest"`
 }
 
 // GetUsers retrieves a paginated list of users with optional search and role filtering
@@ -69,7 +69,7 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 	var users []models.User
 
 	// Build base query
-	query := uc.DB.Model(&models.User{}).Preload("Roles")
+	query := uc.DB.Model(&models.User{}).Order("created_at DESC").Preload("Roles")
 
 	// Filter by role if provided
 	role := strings.TrimSpace(c.Query("role", ""))
@@ -82,9 +82,7 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 	// Search condition if provided
 	search := strings.TrimSpace(c.Query("search", ""))
 	if search != "" {
-		searchCondition := "username ILIKE ? OR full_name ILIKE ?"
-		searchPattern := "%" + search + "%"
-		query = query.Where(searchCondition, searchPattern, searchPattern)
+		query = query.Where("username ILIKE ? OR full_name ILIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 
 	// Get total count for pagination

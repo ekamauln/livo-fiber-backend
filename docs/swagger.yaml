@@ -8,6 +8,19 @@ definitions:
     required:
     - roleName
     type: object
+  controllers.CreateRoleRequest:
+    properties:
+      hierarchy:
+        minimum: 1
+        type: integer
+      name:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - hierarchy
+    - name
+    type: object
   controllers.CreateUserRequest:
     properties:
       email:
@@ -103,6 +116,19 @@ definitions:
     - confirmNewPassword
     - newPassword
     type: object
+  controllers.UpdateRoleRequest:
+    properties:
+      hierarchy:
+        minimum: 1
+        type: integer
+      name:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - hierarchy
+    - name
+    type: object
   controllers.UpdateUserRequest:
     properties:
       email:
@@ -116,6 +142,20 @@ definitions:
       isActive:
         example: true
         type: boolean
+    type: object
+  models.Role:
+    properties:
+      created_at:
+        type: string
+      hierarchy:
+        description: 1=highest, 99=lowest
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
     type: object
   models.SessionResponse:
     properties:
@@ -360,6 +400,202 @@ paths:
       summary: Register a new user
       tags:
       - Authentication
+  /api/roles:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of roles with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of roles per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for role name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Role'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Create a new role
+      parameters:
+      - description: Role details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Role'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create Role
+      tags:
+      - Roles
+  /api/roles/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a role by ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Delete Role
+      tags:
+      - Roles
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single role by ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Role'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Role
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Update an existing role by ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated role details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Role'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Role
+      tags:
+      - Roles
   /api/users:
     get:
       consumes:

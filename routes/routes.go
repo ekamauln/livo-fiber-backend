@@ -15,7 +15,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Controllers
 	authController := controllers.NewAuthController(cfg, db)
 	userController := controllers.NewUserController(db)
-	// roleController := controllers.NewRoleController(db)
+	roleController := controllers.NewRoleController(db)
 	// boxController := controllers.NewBoxController()
 	// storeController := controllers.NewStoreController()
 	// channelController := controllers.NewChannelController()
@@ -178,12 +178,12 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	users.Get("/:id/sessions", userController.GetSessions)
 
 	// Role routes
-	// roles := protected.Group("/roles")
-	// roles.Get("/", roleController.GetRoles)
-	// roles.Get("/:id", roleController.GetRole)
-	// roles.Post("/", middleware.RoleMiddleware([]string{"admin", "developer"}), roleController.CreateRole)
-	// roles.Put("/:id", middleware.RoleMiddleware([]string{"admin", "developer"}), roleController.UpdateRole)
-	// roles.Delete("/:id", middleware.RoleMiddleware([]string{"admin", "developer"}), roleController.DeleteRole)
+	roles := protected.Group("/roles")
+	roles.Get("/", roleController.GetRoles)
+	roles.Get("/:id", roleController.GetRole)
+	roles.Post("/", middleware.RoleMiddleware([]string{"admin", "developer"}), roleController.CreateRole)
+	roles.Put("/:id", middleware.RoleMiddleware([]string{"admin", "developer"}), roleController.UpdateRole)
+	roles.Delete("/:id", middleware.RoleMiddleware([]string{"admin", "developer"}), roleController.DeleteRole)
 
 	// Box routes
 	// boxRoutes := protected.Group("/boxes")
