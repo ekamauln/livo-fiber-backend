@@ -247,12 +247,13 @@ info:
   contact:
     email: support@livo.com
     name: API Support
-  description: This is the API documentation for Livo Fiber Backend application
+  description: This is the API documentation for Livotech Warehouse Management System
+    API Documentation
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
   termsOfService: http://swagger.io/terms/
-  title: Livo Fiber Backend API
+  title: Livotech Warehouse Management System API Documentation
   version: "1.0"
 paths:
   /api/auth/login:

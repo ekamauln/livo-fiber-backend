@@ -35,7 +35,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Health check
 	api.Get("/health", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"Aplication": "Livo Fiber",
+			"Aplication": "Livotech Warehouse Management System API Documentation",
 			"Version":    "1.0.0",
 			"message":    "Health check successful",
 			"status":     "ok",
@@ -123,7 +123,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
         schema-hide-read-only="never"
         schema-hide-write-only="never"
         fetch-credentials="include"
-        heading-text="JWT Auth Service API"
+        heading-text="Livotech Warehouse Management System API Documentation"
         goto-path=""
         fill-request-fields-with-example="true"
         persist-auth="true"

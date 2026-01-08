@@ -20,9 +20,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// @title Livo Fiber Backend API
+// @title Livotech Warehouse Management System API Documentation
 // @version 1.0
-// @description This is the API documentation for Livo Fiber Backend application
+// @description This is the API documentation for Livotech Warehouse Management System API Documentation
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name API Support
@@ -62,7 +62,7 @@ func main() {
 				"error": err.Error(),
 			})
 		},
-		AppName:      "Livo Fiber Backend",
+		AppName:      "Livotech Warehouse Management System API Documentation",
 		ServerHeader: "Fiber",
 	})
 
