@@ -48,6 +48,8 @@ func main() {
 	database.ConnectDatabase(cfg)
 	database.MigrateDatabase()
 	database.SeedInitialRole()
+	database.SeedInitialBox()
+	database.SeedInitialChannel()
 
 	// Get database instance
 	database.GetDB()

@@ -22,6 +22,20 @@ definitions:
     - boxCode
     - boxName
     type: object
+  controllers.CreateChannelRequest:
+    properties:
+      channelCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      channelName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - channelCode
+    - channelName
+    type: object
   controllers.CreateRoleRequest:
     properties:
       hierarchy:
@@ -131,6 +145,20 @@ definitions:
     - boxCode
     - boxName
     type: object
+  controllers.UpdateChannelRequest:
+    properties:
+      channelCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      channelName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - channelCode
+    - channelName
+    type: object
   controllers.UpdatePasswordRequest:
     properties:
       confirmNewPassword:
@@ -176,6 +204,19 @@ definitions:
       box_code:
         type: string
       box_name:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  models.Channel:
+    properties:
+      channel_code:
+        type: string
+      channel_name:
         type: string
       created_at:
         type: string
@@ -634,6 +675,198 @@ paths:
       summary: Update Box
       tags:
       - Boxes
+  /api/channels:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of channels with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of channels per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for channel code or name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Channel'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Channels
+      tags:
+      - Channels
+    post:
+      consumes:
+      - application/json
+      description: Create a new channel
+      parameters:
+      - description: Channel details
+        in: body
+        name: channel
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Channel'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create Channel
+      tags:
+      - Channels
+  /api/channels/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a channel by ID
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Delete Channel
+      tags:
+      - Channels
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single channel by ID
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Channel'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Channel
+      tags:
+      - Channels
+    put:
+      consumes:
+      - application/json
+      description: Update an existing channel by ID
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated channel details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Channel'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Channel
+      tags:
+      - Channels
   /api/roles:
     get:
       consumes:

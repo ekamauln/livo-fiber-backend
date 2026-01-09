@@ -4,7 +4,7 @@ import "time"
 
 type Box struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	BoxCode   string    `gorm:"uniqueIndex;not null;type:varchar(100)" json:"box_code"`
+	BoxCode   string    `gorm:"uniqueIndex;not null;type:varchar(50)" json:"box_code"`
 	BoxName   string    `gorm:"not null;type:varchar(100)" json:"box_name"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

@@ -17,8 +17,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	userController := controllers.NewUserController(db)
 	roleController := controllers.NewRoleController(db)
 	boxController := controllers.NewBoxController(db)
+	channelController := controllers.NewChannelController(db)
 	// storeController := controllers.NewStoreController()
-	// channelController := controllers.NewChannelController()
 	// productController := controllers.NewProductController()
 	// expeditionController := controllers.NewExpeditionController()
 	// orderController := controllers.NewOrderController()
@@ -198,6 +198,14 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	boxRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), boxController.UpdateBox)
 	boxRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), boxController.DeleteBox)
 
+	// Channel routes
+	channelRoutes := protected.Group("/channels")
+	channelRoutes.Get("/", channelController.GetChannels)
+	channelRoutes.Get("/:id", channelController.GetChannel)
+	channelRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), channelController.CreateChannel)
+	channelRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), channelController.UpdateChannel)
+	channelRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), channelController.DeleteChannel)
+
 	// Store routes
 	// storeRoutes := protected.Group("/stores")
 	// storeRoutes.Get("/", storeController.GetStores)
@@ -205,14 +213,6 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// storeRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), storeController.CreateStore)
 	// storeRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), storeController.UpdateStore)
 	// storeRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), storeController.DeleteStore)
-
-	// Channel routes
-	// channelRoutes := protected.Group("/channels")
-	// channelRoutes.Get("/", channelController.GetChannels)
-	// channelRoutes.Get("/:id", channelController.GetChannel)
-	// channelRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), channelController.CreateChannel)
-	// channelRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), channelController.UpdateChannel)
-	// channelRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), channelController.DeleteChannel)
 
 	// Product routes
 	// productRoutes := protected.Group("/products")

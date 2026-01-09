@@ -90,10 +90,10 @@ func MigrateDatabase() error {
 		&models.User{},
 		&models.Session{},
 		&models.Box{},
+		&models.Channel{},
 		// &models.Store{},
 		// &models.Expedition{},
 		// &models.Product{},
-		// &models.Channel{},
 		// &models.Order{},
 		// &models.OrderDetail{},
 		// &models.QCRibbon{},
@@ -202,6 +202,40 @@ func SeedInitialBox() error {
 	}
 
 	log.Println("✅ Boxes seeding completed successfully")
+	return nil
+}
+
+func SeedInitialChannel() error {
+	log.Println("🌱 Seeding initial channel data into the database...")
+
+	// Create initial channels
+	channels := []models.Channel{
+		{ChannelCode: "SP", ChannelName: "Shopee"},
+		{ChannelCode: "TP", ChannelName: "Tokopedia"},
+		{ChannelCode: "LA", ChannelName: "Lazada"},
+		{ChannelCode: "BU", ChannelName: "Bukalapak"},
+		{ChannelCode: "BL", ChannelName: "Blibli"},
+		{ChannelCode: "TT", ChannelName: "Tiktok"},
+	}
+
+	for _, channelData := range channels {
+		var existingChannel models.Channel
+		result := DB.Where("channel_code = ?", channelData.ChannelCode).First(&existingChannel)
+
+		if result.Error == gorm.ErrRecordNotFound {
+			// Create new channel
+			channel := models.Channel{
+				ChannelCode: channelData.ChannelCode,
+				ChannelName: channelData.ChannelName,
+			}
+
+			if err := DB.Create(&channel).Error; err != nil {
+				return fmt.Errorf("failed to create channel %s: %w", channelData.ChannelCode, err)
+			}
+		}
+	}
+
+	log.Println("✅ Channels seeding completed successfully")
 	return nil
 }
 
