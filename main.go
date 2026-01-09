@@ -51,6 +51,7 @@ func main() {
 	database.SeedInitialBox()
 	database.SeedInitialChannel()
 	database.SeedInitialExpedition()
+	database.SeedInitialStore()
 
 	// Get database instance
 	database.GetDB()

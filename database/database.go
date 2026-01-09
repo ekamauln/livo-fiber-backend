@@ -92,7 +92,7 @@ func MigrateDatabase() error {
 		&models.Box{},
 		&models.Channel{},
 		&models.Expedition{},
-		// &models.Store{},
+		&models.Store{},
 		// &models.Product{},
 		// &models.Order{},
 		// &models.OrderDetail{},
@@ -308,6 +308,47 @@ func SeedInitialExpedition() error {
 	}
 
 	log.Println("✅ Expeditions seeding completed successfully")
+	return nil
+}
+
+func SeedInitialStore() error {
+	log.Println("🌱 Seeding initial store data into the database...")
+
+	// Create initial stores
+	stores := []models.Store{
+		{StoreCode: "AX", StoreName: "Axon"},
+		{StoreCode: "DR", StoreName: "DeParcel Ribbon"},
+		{StoreCode: "AS", StoreName: "Axon Store"},
+		{StoreCode: "AL", StoreName: "Aqualivo"},
+		{StoreCode: "LM", StoreName: "Livo Mall"},
+		{StoreCode: "LI", StoreName: "Livo ID"},
+		{StoreCode: "BI", StoreName: "Bion"},
+		{StoreCode: "AI", StoreName: "Axon ID"},
+		{StoreCode: "AM", StoreName: "Axon Mall"},
+		{StoreCode: "AS", StoreName: "Aqualivo Store"},
+		{StoreCode: "RP", StoreName: "Rumah Pita"},
+		{StoreCode: "SL", StoreName: "Sporti Livo"},
+		{StoreCode: "LT", StoreName: "Livotech"},
+	}
+
+	for _, storeData := range stores {
+		var existingStore models.Store
+		result := DB.Where("store_code = ?", storeData.StoreCode).First(&existingStore)
+
+		if result.Error == gorm.ErrRecordNotFound {
+			// Create new store
+			store := models.Store{
+				StoreCode: storeData.StoreCode,
+				StoreName: storeData.StoreName,
+			}
+
+			if err := DB.Create(&store).Error; err != nil {
+				return fmt.Errorf("failed to create store %s: %w", storeData.StoreCode, err)
+			}
+		}
+	}
+
+	log.Println("✅ Stores seeding completed successfully")
 	return nil
 }
 

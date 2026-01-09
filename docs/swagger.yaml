@@ -36,6 +36,25 @@ definitions:
     - channelCode
     - channelName
     type: object
+  controllers.CreateExpeditionRequest:
+    properties:
+      expeditionCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      expeditionColor:
+        maxLength: 20
+        minLength: 3
+        type: string
+      expeditionName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - expeditionCode
+    - expeditionColor
+    - expeditionName
+    type: object
   controllers.CreateRoleRequest:
     properties:
       hierarchy:
@@ -48,6 +67,20 @@ definitions:
     required:
     - hierarchy
     - roleName
+    type: object
+  controllers.CreateStoreRequest:
+    properties:
+      storeCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      storeName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - storeCode
+    - storeName
     type: object
   controllers.CreateUserRequest:
     properties:
@@ -159,6 +192,25 @@ definitions:
     - channelCode
     - channelName
     type: object
+  controllers.UpdateExpeditionRequest:
+    properties:
+      expeditionCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      expeditionColor:
+        maxLength: 20
+        minLength: 3
+        type: string
+      expeditionName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - expeditionCode
+    - expeditionColor
+    - expeditionName
+    type: object
   controllers.UpdatePasswordRequest:
     properties:
       confirmNewPassword:
@@ -184,6 +236,20 @@ definitions:
     required:
     - hierarchy
     - roleName
+    type: object
+  controllers.UpdateStoreRequest:
+    properties:
+      storeCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      storeName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - storeCode
+    - storeName
     type: object
   controllers.UpdateUserRequest:
     properties:
@@ -225,6 +291,23 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.Expedition:
+    properties:
+      created_at:
+        type: string
+      expedition_code:
+        type: string
+      expedition_color:
+        type: string
+      expedition_name:
+        type: string
+      expedition_slug:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   models.Role:
     properties:
       created_at:
@@ -255,6 +338,19 @@ definitions:
         type: string
       userId:
         type: integer
+    type: object
+  models.Store:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      store_code:
+        type: string
+      store_name:
+        type: string
+      updated_at:
+        type: string
     type: object
   models.UserResponse:
     properties:
@@ -867,6 +963,198 @@ paths:
       summary: Update Channel
       tags:
       - Channels
+  /api/expeditions:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of expeditions with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of expeditions per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for expedition code or name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Expedition'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Expeditions
+      tags:
+      - Expeditions
+    post:
+      consumes:
+      - application/json
+      description: Create a new expedition
+      parameters:
+      - description: Expedition details
+        in: body
+        name: expedition
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateExpeditionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Expedition'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create Expedition
+      tags:
+      - Expeditions
+  /api/expeditions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an expedition by ID
+      parameters:
+      - description: Expedition ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Delete Expedition
+      tags:
+      - Expeditions
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single expedition by ID
+      parameters:
+      - description: Expedition ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Expedition'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Expedition
+      tags:
+      - Expeditions
+    put:
+      consumes:
+      - application/json
+      description: Update an existing expedition by ID
+      parameters:
+      - description: Expedition ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated expedition details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateExpeditionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Expedition'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Expedition
+      tags:
+      - Expeditions
   /api/roles:
     get:
       consumes:
@@ -1063,6 +1351,198 @@ paths:
       summary: Update Role
       tags:
       - Roles
+  /api/stores:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of stores with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of stores per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for store code or name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Store'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Stores
+      tags:
+      - Stores
+    post:
+      consumes:
+      - application/json
+      description: Create a new store
+      parameters:
+      - description: Store details
+        in: body
+        name: store
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateStoreRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Store'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create Store
+      tags:
+      - Stores
+  /api/stores/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a store by ID
+      parameters:
+      - description: Store ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Delete Store
+      tags:
+      - Stores
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single store by ID
+      parameters:
+      - description: Store ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Store'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Store
+      tags:
+      - Stores
+    put:
+      consumes:
+      - application/json
+      description: Update an existing store by ID
+      parameters:
+      - description: Store ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated store details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateStoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Store'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Store
+      tags:
+      - Stores
   /api/users:
     get:
       consumes:

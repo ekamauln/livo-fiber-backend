@@ -19,7 +19,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	boxController := controllers.NewBoxController(db)
 	channelController := controllers.NewChannelController(db)
 	expeditionController := controllers.NewExpeditionController(db)
-	// storeController := controllers.NewStoreController()
+	storeController := controllers.NewStoreController(db)
 	// productController := controllers.NewProductController()
 	// orderController := controllers.NewOrderController()
 	// qcOnlineController := controllers.NewQCOnlineController()
@@ -215,12 +215,12 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	expeditionRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), expeditionController.DeleteExpedition)
 
 	// Store routes
-	// storeRoutes := protected.Group("/stores")
-	// storeRoutes.Get("/", storeController.GetStores)
-	// storeRoutes.Get("/:id", storeController.GetStore)
-	// storeRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), storeController.CreateStore)
-	// storeRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), storeController.UpdateStore)
-	// storeRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), storeController.DeleteStore)
+	storeRoutes := protected.Group("/stores")
+	storeRoutes.Get("/", storeController.GetStores)
+	storeRoutes.Get("/:id", storeController.GetStore)
+	storeRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), storeController.CreateStore)
+	storeRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), storeController.UpdateStore)
+	storeRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), storeController.DeleteStore)
 
 	// Product routes
 	// productRoutes := protected.Group("/products")
