@@ -234,20 +234,20 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	orderRoutes := protected.Group("/orders")
 	orderRoutes.Get("/", orderController.GetOrders)
 	orderRoutes.Get("/:id", orderController.GetOrder)
-	// orderRoutes.Put("/:id/status/qc-process", orderController.QCProcessStatus)
-	// orderRoutes.Put("/:id/status/picking-completed", orderController.PickingCompletedStatus)
+	orderRoutes.Put("/:id/status/qc-process", orderController.QCProcessStatusUpdate)
+	orderRoutes.Put("/:id/status/picking-completed", orderController.PickingCompleteStatusUpdate)
 
 	// Order router for admin
 	orderRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CreateOrder)
 	orderRoutes.Post("/bulk", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.BulkCreateOrders)
-	// orderRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.UpdateOrder)
+	orderRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.UpdateOrder)
 	orderRoutes.Put("/:id/duplicate", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.DuplicateOrder)
-	// orderRoutes.Put("/:id/cancel", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CancelOrder)
+	orderRoutes.Put("/:id/cancel", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CancelOrder)
 
 	// Order router for coordinator
-	// orderRoutes.Post("/:id/assign-picker", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.AssignPicker)
-	// orderRoutes.Post("/:id/pending-picking", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.PendingPickingOrders)
-	// orderRoutes.Get("/assigned", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.GetAssignedOrders)
+	orderRoutes.Post("/:id/assign-picker", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.AssignPicker)
+	orderRoutes.Post("/:id/pending-picking", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.PendingPickingOrders)
+	orderRoutes.Get("/assigned", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.GetAssignedOrders)
 
 	// QCRibbon routes
 	// qcRibbonRoutes := protected.Group("/qc-ribbons")

@@ -525,7 +525,7 @@ func (oc *OrderController) UpdateOrder(c fiber.Ctx) error {
 	// Parse id parameter
 	id := c.Params("id")
 	var order models.Order
-	if err := oc.DB.Where("id = ?", id).First(&order).Error; err != nil {
+	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order with id " + id + " not found.",
@@ -659,7 +659,7 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 	// Parse id parameter
 	id := c.Params("id")
 	var order models.Order
-	if err := oc.DB.Where("id = ?", id).Preload("OrderDetails").First(&order).Error; err != nil {
+	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).Preload("OrderDetails").First(&order).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order with id " + id + " not found.",
@@ -732,9 +732,7 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 
 	// Update tracking number in qc ribbon, qc online, and outbound if exists (ignore errors if table doesn't exist)
 	tx.Model(&models.QCRibbon{}).Where("tracking_number = ?", originalTrackingNumber).Update("tracking_number", newTrackingNumber)
-
 	tx.Model(&models.QCOnline{}).Where("tracking_number = ?", originalTrackingNumber).Update("tracking_number", newTrackingNumber)
-
 	tx.Model(&models.Outbound{}).Where("tracking_number = ?", originalTrackingNumber).Update("tracking_number", newTrackingNumber)
 
 	// Create duplicated order
@@ -790,5 +788,470 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 			"originalOrder":   order.ToOrderResponse(),
 			"duplicatedOrder": duplicatedOrder.ToOrderResponse(),
 		},
+	})
+}
+
+// CancelOrder cancels an existing order
+// @Summary Cancel Order
+// @Description Cancel an existing order
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.Order}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/orders/{id}/cancel [put]
+func (oc *OrderController) CancelOrder(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var order models.Order
+	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order with id " + id + " not found.",
+		})
+	}
+
+	// Get current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Check if order status allows modification
+	if order.ProcessingStatus == "picking process" || order.ProcessingStatus == "qc process" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order status does not allow cancellation",
+		})
+	}
+
+	// Check if order is already cancelled
+	if order.EventStatus != nil && *order.EventStatus == "cancelled" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order is already cancelled",
+		})
+	}
+
+	// Start database transaction
+	tx := oc.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Update order status to cancelled
+	now := time.Now()
+	userIDUint := uint(userID)
+	eventStatusCanceled := "canceled"
+	order.EventStatus = &eventStatusCanceled
+	order.CanceledBy = &userIDUint
+	order.CanceledAt = &now
+
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to cancel order",
+		})
+	}
+
+	// Set all order details quantity to zero
+	if err := tx.Model(&models.OrderDetail{}).Where("order_id = ?", order.ID).Update("quantity", 0).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order details",
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to commit transaction",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Order cancelled successfully",
+		Data:    order.ToOrderResponse(),
+	})
+}
+
+// AssignPicker assigns a picker to an order
+// @Summary Assign Picker
+// @Description Assign a picker to an order
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param picker body AssignPickerRequest true "Picker assignment details"
+// @Success 200 {object} utils.SuccessResponse{data=models.Order}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/orders/{id}/assign-picker [put]
+func (oc *OrderController) AssignPicker(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var order models.Order
+	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order with id " + id + " not found.",
+		})
+	}
+
+	// Binding request body
+	var req AssignPickerRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Get current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Check if the picker is exists
+	var picker models.User
+	if err := oc.DB.First(&picker, "id = ?", req.PickerID).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Picker with id " + strconv.FormatUint(uint64(req.PickerID), 10) + " does not exist.",
+		})
+	}
+
+	// Check if order processing status allows assignment
+	if order.ProcessingStatus != "ready to pick" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order cannot be assigned a picker in " + order.ProcessingStatus + " status.",
+		})
+	}
+
+	// Check if order is canceled
+	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Canceled order cannot be assigned a picker.",
+		})
+	}
+
+	// Update order with assignment details
+	now := time.Now()
+	userIDUint := uint(userID)
+	order.AssignedBy = &userIDUint
+	order.AssignedAt = &now
+	order.PickedBy = &req.PickerID
+	order.ProcessingStatus = "picking process"
+
+	if err := oc.DB.Save(&order).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to assign picker",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Picker assigned successfully",
+		Data:    order.ToOrderResponse(),
+	})
+}
+
+// PendingPickingOrders marks an order as pending picking
+// @Summary Pending Picking Order
+// @Description Mark an order as pending picking
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.Order}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/orders/{id}/pending-picking [put]
+func (oc *OrderController) PendingPickingOrders(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var order models.Order
+	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order with id " + id + " not found.",
+		})
+	}
+
+	// Getting current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Check if order processing status is "picking process"
+	if order.ProcessingStatus != "picking process" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order cannot be marked as pending in " + order.ProcessingStatus + " status.",
+		})
+	}
+
+	// Update order to pending picking
+	now := time.Now()
+	userIDUint := uint(userID)
+	order.ProcessingStatus = "pending picking"
+	order.PendingBy = &userIDUint
+	order.PendingAt = &now
+	order.PickedBy = nil
+	order.AssignedBy = nil
+	order.AssignedAt = nil
+
+	if err := oc.DB.Save(&order).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to mark order as pending",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Order marked as pending picking successfully",
+		Data:    order.ToOrderResponse(),
+	})
+}
+
+// GetAssignedOrders retrieves orders assigned to a all picker
+func (oc *OrderController) GetAssignedOrders(c fiber.Ctx) error {
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	offset := (page - 1) * limit
+
+	var orders []models.Order
+
+	// Build base query
+	query := oc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Order("created_at DESC").Where("processing_status = ?", "picking process")
+
+	// Date range filter if provided
+	startDate := c.Query("start_date", "")
+	endDate := c.Query("end_date", "")
+	if startDate != "" && endDate != "" {
+		// Parse start date and set time to beginning of the day
+		if parsedStartDate, err := time.Parse("2006-01-02", startDate); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid start_date format. Use YYYY-MM-DD.",
+			})
+		} else {
+			startOfDay := parsedStartDate.Format("2006-01-02 00:00:00")
+			query = query.Where("created_at >= ?", startOfDay)
+		}
+	}
+	if endDate != "" {
+		// Parse end date and set time to end of the day
+		if parsedEndDate, err := time.Parse("2006-01-02", endDate); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid end_date format. Use YYYY-MM-DD.",
+			})
+		} else {
+			endOfDay := parsedEndDate.Format("2006-01-02 23:59:59")
+			query = query.Where("created_at <= ?", endOfDay)
+		}
+	}
+
+	// Search condition if provided
+	search := c.Query("search", "")
+	if search != "" {
+		query = query.Where("ginee_id ILIKE ? OR tracking_number ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	// Get total count for pagination
+	var total int64
+	query.Count(&total)
+
+	// Retrieve paginated results
+	if err := query.Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve orders",
+		})
+	}
+
+	// Format response
+	orderList := make([]models.OrderResponse, len(orders))
+	for i, order := range orders {
+		orderList[i] = *order.ToOrderResponse()
+	}
+
+	// Build success message
+	message := "Assigned orders retrieved successfully"
+	var filters []string
+
+	if startDate != "" || endDate != "" {
+		var dateRange []string
+		if startDate != "" {
+			dateRange = append(dateRange, "from: "+startDate)
+		}
+		if endDate != "" {
+			dateRange = append(dateRange, "to: "+endDate)
+		}
+		filters = append(filters, "date: "+strings.Join(dateRange, ", "))
+	}
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	// Return response
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
+		Success: true,
+		Message: message,
+		Data:    orderList,
+		Pagination: utils.Pagination{
+			Page:  page,
+			Limit: limit,
+			Total: total,
+		},
+	})
+}
+
+// QcProcessStatusUpdate updates the QC process status of an order
+// @Summary Update QC Process Status
+// @Description Update the QC process status of an order
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param qcStatus body QCProcessStatusUpdateRequest true "QC process status details"
+// @Success 200 {object} utils.SuccessResponse{data=models.Order}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/orders/{id}/status/qc-process [put]
+func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var order models.Order
+	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order with id " + id + " not found.",
+		})
+	}
+
+	// Check if order processing status allows modification
+	if order.ProcessingStatus == "qc process" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order is already in qc process status.",
+		})
+	}
+
+	// Check if order is canceled
+	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Canceled order cannot be updated to qc process status.",
+		})
+	}
+
+	// Update order processing status to "qc process"
+	order.ProcessingStatus = "qc process"
+
+	if err := oc.DB.Save(&order).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order processing status",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Order processing status updated to qc process successfully",
+		Data:    order.ToOrderResponse(),
+	})
+}
+
+// PickingCompleteStatusUpdate updates the picking complete status of an order
+// @Summary Update Picking Complete Status
+// @Description Update the picking complete status of an order
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param pickingComplete body PickingCompleteStatusUpdateRequest true "Picking complete status details"
+// @Success 200 {object} utils.SuccessResponse{data=models.Order}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/orders/{id}/status/picking-complete [put]
+func (oc *OrderController) PickingCompleteStatusUpdate(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var order models.Order
+	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order with id " + id + " not found.",
+		})
+	}
+
+	// Check if order processing status allows modification
+	if order.ProcessingStatus == "picking complete" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order is already in picking complete status.",
+		})
+	}
+
+	// Check if order is canceled
+	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Canceled order cannot be updated to picking complete status.",
+		})
+	}
+
+	// Update order processing status to "picking complete"
+	order.ProcessingStatus = "picking complete"
+	if err := oc.DB.Save(&order).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order processing status",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Order processing status updated to picking complete successfully",
+		Data:    order.ToOrderResponse(),
 	})
 }
