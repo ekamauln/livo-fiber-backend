@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"strconv"
@@ -42,6 +43,7 @@ type UpdateExpeditionRequest struct {
 // @Param search query string false "Search term for expedition code or name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Expedition}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/expeditions [get]
 func (bc *ExpeditionController) GetExpeditions(c fiber.Ctx) error {
@@ -79,9 +81,22 @@ func (bc *ExpeditionController) GetExpeditions(c fiber.Ctx) error {
 		expeditionList[i] = *expedition.ToResponse()
 	}
 
+	// Build success message
+	message := "Expeditions retrieved successfully"
+	var filters []string
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	// Return success response
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
-		Message: "Expeditions retrieved successfully",
+		Message: message,
 		Data:    expeditionList,
 		Pagination: utils.Pagination{
 			Page:  page,

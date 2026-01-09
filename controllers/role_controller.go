@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"strconv"
@@ -40,6 +41,7 @@ type UpdateRoleRequest struct {
 // @Param search query string false "Search term for role name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Role}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles [get]
 func (rc *RoleController) GetRoles(c fiber.Ctx) error {
@@ -77,9 +79,22 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 		roleList[i] = *role.ToResponse()
 	}
 
+	// Build success message
+	message := "Roles retrieved successfully"
+	var filters []string
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	// Return success response
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
-		Message: "Roles retrieved successfully",
+		Message: message,
 		Data:    roleList,
 		Pagination: utils.Pagination{
 			Page:  page,

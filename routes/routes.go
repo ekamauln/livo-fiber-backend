@@ -20,8 +20,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	channelController := controllers.NewChannelController(db)
 	expeditionController := controllers.NewExpeditionController(db)
 	storeController := controllers.NewStoreController(db)
-	// productController := controllers.NewProductController()
-	// orderController := controllers.NewOrderController()
+	productController := controllers.NewProductController(db)
+	orderController := controllers.NewOrderController(db)
 	// qcOnlineController := controllers.NewQCOnlineController()
 	// qcRibbonController := controllers.NewQCRibbonController()
 	// outboundController := controllers.NewOutboundController()
@@ -223,25 +223,25 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	storeRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), storeController.DeleteStore)
 
 	// Product routes
-	// productRoutes := protected.Group("/products")
-	// productRoutes.Get("/", productController.GetProducts)
-	// productRoutes.Get("/:id", productController.GetProduct)
-	// productRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.CreateProduct)
-	// productRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.UpdateProduct)
-	// productRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), productController.DeleteProduct)
+	productRoutes := protected.Group("/products")
+	productRoutes.Get("/", productController.GetProducts)
+	productRoutes.Get("/:id", productController.GetProduct)
+	productRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.CreateProduct)
+	productRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.UpdateProduct)
+	productRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), productController.DeleteProduct)
 
 	// Order routes
-	// orderRoutes := protected.Group("/orders")
-	// orderRoutes.Get("/", orderController.GetOrders)
-	// orderRoutes.Get("/:id", orderController.GetOrder)
+	orderRoutes := protected.Group("/orders")
+	orderRoutes.Get("/", orderController.GetOrders)
+	orderRoutes.Get("/:id", orderController.GetOrder)
 	// orderRoutes.Put("/:id/status/qc-process", orderController.QCProcessStatus)
 	// orderRoutes.Put("/:id/status/picking-completed", orderController.PickingCompletedStatus)
 
 	// Order router for admin
-	// orderRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CreateOrder)
-	// orderRoutes.Post("/bulk", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CreateBulkOrders)
+	orderRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CreateOrder)
+	orderRoutes.Post("/bulk", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.BulkCreateOrders)
 	// orderRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.UpdateOrder)
-	// orderRoutes.Put("/:id/duplicate", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.DuplicateOrder)
+	orderRoutes.Put("/:id/duplicate", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.DuplicateOrder)
 	// orderRoutes.Put("/:id/cancel", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CancelOrder)
 
 	// Order router for coordinator

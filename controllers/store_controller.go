@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"strconv"
@@ -40,6 +41,7 @@ type UpdateStoreRequest struct {
 // @Param search query string false "Search term for store code or name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Store}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores [get]
 func (bc *StoreController) GetStores(c fiber.Ctx) error {
@@ -77,9 +79,22 @@ func (bc *StoreController) GetStores(c fiber.Ctx) error {
 		storeList[i] = *store.ToResponse()
 	}
 
+	// Build success message
+	message := "Stores retrieved successfully"
+	var filters []string
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	// Return success response
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
-		Message: "Stores retrieved successfully",
+		Message: message,
 		Data:    storeList,
 		Pagination: utils.Pagination{
 			Page:  page,

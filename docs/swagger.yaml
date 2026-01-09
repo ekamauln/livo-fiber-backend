@@ -8,6 +8,43 @@ definitions:
     required:
     - roleName
     type: object
+  controllers.BulkCreateOrdersReponse:
+    properties:
+      createdOrders:
+        items:
+          $ref: '#/definitions/models.OrderResponse'
+        type: array
+      failedOrders:
+        items:
+          $ref: '#/definitions/controllers.FailedOrder'
+        type: array
+      skippedOrders:
+        items:
+          $ref: '#/definitions/controllers.SkippedOrder'
+        type: array
+      summary:
+        $ref: '#/definitions/controllers.BulkCreateSummary'
+    type: object
+  controllers.BulkCreateOrdersRequest:
+    properties:
+      orders:
+        items:
+          $ref: '#/definitions/controllers.CreateOrderRequest'
+        type: array
+    required:
+    - orders
+    type: object
+  controllers.BulkCreateSummary:
+    properties:
+      created:
+        type: integer
+      failed:
+        type: integer
+      skipped:
+        type: integer
+      total:
+        type: integer
+    type: object
   controllers.CreateBoxRequest:
     properties:
       boxCode:
@@ -54,6 +91,98 @@ definitions:
     - expeditionCode
     - expeditionColor
     - expeditionName
+    type: object
+  controllers.CreateOrderDetailRequest:
+    properties:
+      price:
+        type: integer
+      productName:
+        maxLength: 255
+        minLength: 1
+        type: string
+      quantity:
+        type: integer
+      sku:
+        maxLength: 255
+        minLength: 1
+        type: string
+      variant:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - price
+    - productName
+    - quantity
+    - sku
+    type: object
+  controllers.CreateOrderRequest:
+    properties:
+      address:
+        maxLength: 255
+        minLength: 3
+        type: string
+      buyer:
+        maxLength: 100
+        minLength: 3
+        type: string
+      channel:
+        maxLength: 100
+        minLength: 3
+        type: string
+      courier:
+        maxLength: 100
+        minLength: 3
+        type: string
+      orderDetails:
+        items:
+          $ref: '#/definitions/controllers.CreateOrderDetailRequest'
+        type: array
+      orderGineeId:
+        maxLength: 100
+        minLength: 3
+        type: string
+      sentBefore:
+        type: string
+      store:
+        maxLength: 100
+        minLength: 3
+        type: string
+      trackingNumber:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - address
+    - buyer
+    - channel
+    - orderDetails
+    - orderGineeId
+    - store
+    type: object
+  controllers.CreateProductRequest:
+    properties:
+      image:
+        type: string
+      location:
+        maxLength: 100
+        minLength: 1
+        type: string
+      name:
+        maxLength: 100
+        minLength: 3
+        type: string
+      sku:
+        maxLength: 50
+        minLength: 3
+        type: string
+      variant:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - name
+    - sku
     type: object
   controllers.CreateRoleRequest:
     properties:
@@ -111,6 +240,24 @@ definitions:
     - password
     - username
     type: object
+  controllers.DuplicatedOrderResponse:
+    properties:
+      duplicatedOrder:
+        $ref: '#/definitions/models.OrderResponse'
+      originalOrder:
+        $ref: '#/definitions/models.OrderResponse'
+    type: object
+  controllers.FailedOrder:
+    properties:
+      error:
+        type: string
+      index:
+        type: integer
+      orderGineeId:
+        type: string
+      trackingNumber:
+        type: string
+    type: object
   controllers.LoginRequest:
     properties:
       password:
@@ -164,6 +311,17 @@ definitions:
     required:
     - roleName
     type: object
+  controllers.SkippedOrder:
+    properties:
+      index:
+        type: integer
+      orderGineeId:
+        type: string
+      reason:
+        type: string
+      trackingNumber:
+        type: string
+    type: object
   controllers.UpdateBoxRequest:
     properties:
       boxCode:
@@ -211,6 +369,39 @@ definitions:
     - expeditionColor
     - expeditionName
     type: object
+  controllers.UpdateOrderDetailRequest:
+    properties:
+      price:
+        type: integer
+      productName:
+        maxLength: 255
+        minLength: 1
+        type: string
+      quantity:
+        type: integer
+      sku:
+        maxLength: 255
+        minLength: 1
+        type: string
+      variant:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - price
+    - productName
+    - quantity
+    - sku
+    type: object
+  controllers.UpdateOrderRequest:
+    properties:
+      orderDetails:
+        items:
+          $ref: '#/definitions/controllers.UpdateOrderDetailRequest'
+        type: array
+    required:
+    - orderDetails
+    type: object
   controllers.UpdatePasswordRequest:
     properties:
       confirmNewPassword:
@@ -223,6 +414,30 @@ definitions:
     required:
     - confirmNewPassword
     - newPassword
+    type: object
+  controllers.UpdateProductRequest:
+    properties:
+      image:
+        type: string
+      location:
+        maxLength: 100
+        minLength: 1
+        type: string
+      name:
+        maxLength: 100
+        minLength: 3
+        type: string
+      sku:
+        maxLength: 50
+        minLength: 3
+        type: string
+      variant:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - name
+    - sku
     type: object
   controllers.UpdateRoleRequest:
     properties:
@@ -308,6 +523,210 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.Order:
+    properties:
+      address:
+        type: string
+      assign_user:
+        $ref: '#/definitions/models.User'
+      assigned_at:
+        type: string
+      assigned_by:
+        type: integer
+      buyer:
+        type: string
+      cancel_user:
+        $ref: '#/definitions/models.User'
+      canceled_at:
+        type: string
+      canceled_by:
+        type: integer
+      change_user:
+        $ref: '#/definitions/models.User'
+      changed_at:
+        type: string
+      changed_by:
+        type: integer
+      channel:
+        type: string
+      complained:
+        type: boolean
+      courier:
+        type: string
+      created_at:
+        type: string
+      duplicate_user:
+        $ref: '#/definitions/models.User'
+      duplicated_at:
+        type: string
+      duplicated_by:
+        type: integer
+      event_status:
+        type: string
+      id:
+        type: integer
+      order_details:
+        items:
+          $ref: '#/definitions/models.OrderDetail'
+        type: array
+      order_ginee_id:
+        type: string
+      pending_at:
+        type: string
+      pending_by:
+        type: integer
+      pending_user:
+        $ref: '#/definitions/models.User'
+      pick_user:
+        $ref: '#/definitions/models.User'
+      picked_at:
+        type: string
+      picked_by:
+        type: integer
+      processing_status:
+        type: string
+      sent_before:
+        type: string
+      store:
+        type: string
+      tracking_number:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.OrderDetail:
+    properties:
+      id:
+        type: integer
+      order_id:
+        type: integer
+      price:
+        type: integer
+      product:
+        $ref: '#/definitions/models.Product'
+      product_name:
+        type: string
+      quantity:
+        type: integer
+      sku:
+        type: string
+      variant:
+        type: string
+    type: object
+  models.OrderDetailResponse:
+    properties:
+      orderId:
+        type: integer
+      price:
+        type: integer
+      product:
+        $ref: '#/definitions/models.ProductResponse'
+      productName:
+        type: string
+      quantity:
+        type: integer
+      sku:
+        type: string
+      variant:
+        type: string
+    type: object
+  models.OrderResponse:
+    properties:
+      address:
+        type: string
+      assignedAt:
+        type: string
+      assignedBy:
+        type: string
+      buyer:
+        type: string
+      canceledAt:
+        type: string
+      canceledBy:
+        type: string
+      changedAt:
+        type: string
+      changedBy:
+        type: string
+      channel:
+        type: string
+      complained:
+        type: boolean
+      courier:
+        type: string
+      createdAt:
+        type: string
+      duplicatedAt:
+        type: string
+      duplicatedBy:
+        type: string
+      eventStatus:
+        type: string
+      id:
+        type: integer
+      orderDetails:
+        items:
+          $ref: '#/definitions/models.OrderDetailResponse'
+        type: array
+      orderGineeId:
+        type: string
+      pendingAt:
+        type: string
+      pendingBy:
+        type: string
+      pickedAt:
+        type: string
+      pickedBy:
+        type: string
+      processingStatus:
+        type: string
+      sentBefore:
+        type: string
+      store:
+        type: string
+      trackingNumber:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.Product:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      image:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+      sku:
+        type: string
+      updated_at:
+        type: string
+      variant:
+        type: string
+    type: object
+  models.ProductResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      image:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+      sku:
+        type: string
+      updatedAt:
+        type: string
+      variant:
+        type: string
+    type: object
   models.Role:
     properties:
       created_at:
@@ -350,6 +769,29 @@ definitions:
       store_name:
         type: string
       updated_at:
+        type: string
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      last_login:
+        type: string
+      roles:
+        items:
+          $ref: '#/definitions/models.Role'
+        type: array
+      updated_at:
+        type: string
+      username:
         type: string
     type: object
   models.UserResponse:
@@ -721,6 +1163,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -913,6 +1359,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -999,6 +1449,10 @@ paths:
               type: object
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "500":
@@ -1155,6 +1609,447 @@ paths:
       summary: Update Expedition
       tags:
       - Expeditions
+  /api/orders:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of orders with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of orders per page
+        in: query
+        name: limit
+        type: integer
+      - description: Start date (YYYY-MM-DD format)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD format)
+        in: query
+        name: end_date
+        type: string
+      - description: Search term for order ginee id or tracking number
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Order'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Orders
+      tags:
+      - Orders
+    post:
+      consumes:
+      - application/json
+      description: Create a new order
+      parameters:
+      - description: Order details
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create Order
+      tags:
+      - Orders
+  /api/orders/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single order by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Order
+      tags:
+      - Orders
+    put:
+      consumes:
+      - application/json
+      description: Update an existing order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated order details
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Order
+      tags:
+      - Orders
+  /api/orders/{id}/duplicate:
+    put:
+      consumes:
+      - application/json
+      description: Duplicate an existing order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.DuplicatedOrderResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Duplicate Order
+      tags:
+      - Orders
+  /api/orders/bulk:
+    post:
+      consumes:
+      - application/json
+      description: Create multiple orders in a single request
+      parameters:
+      - description: List of orders to create
+        in: body
+        name: orders
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.BulkCreateOrdersRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.BulkCreateOrdersReponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Bulk Create Orders
+      tags:
+      - Orders
+  /api/products:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of products with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of Products per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for product SKU or name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Product'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Create a new product
+      parameters:
+      - description: Product details
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create Product
+      tags:
+      - Products
+  /api/products/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Delete Product
+      tags:
+      - Products
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Product
+      tags:
+      - Products
+    put:
+      consumes:
+      - application/json
+      description: Update an existing product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated product details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Product
+      tags:
+      - Products
   /api/roles:
     get:
       consumes:
@@ -1191,6 +2086,10 @@ paths:
               type: object
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "500":
@@ -1389,6 +2288,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1584,6 +2487,10 @@ paths:
               type: object
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "500":

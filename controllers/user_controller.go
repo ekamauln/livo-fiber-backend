@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"strconv"
@@ -58,6 +59,7 @@ type RemoveRoleRequest struct {
 // @Param role query string false "Filter users by role name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.UserResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users [get]
 func (uc *UserController) GetUsers(c fiber.Ctx) error {
@@ -103,9 +105,22 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 		userList[i] = *user.ToResponse()
 	}
 
+	// Build success message
+	message := "Users retrieved successfully"
+	var filters []string
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	// Return success response
 	return c.JSON(utils.SuccessPaginatedResponse{
 		Success: true,
-		Message: "Users retrieved successfully",
+		Message: message,
 		Data:    userList,
 		Pagination: utils.Pagination{
 			Page:  page,

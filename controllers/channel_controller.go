@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"strconv"
@@ -77,9 +78,22 @@ func (bc *ChannelController) GetChannels(c fiber.Ctx) error {
 		channelList[i] = *channel.ToResponse()
 	}
 
+	// Build success message
+	message := "Channels retrieved successfully"
+	var filters []string
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	// Return success response
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
-		Message: "Channels retrieved successfully",
+		Message: message,
 		Data:    channelList,
 		Pagination: utils.Pagination{
 			Page:  page,
@@ -98,6 +112,7 @@ func (bc *ChannelController) GetChannels(c fiber.Ctx) error {
 // @Param id path int true "Channel ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Channel}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/channels/{id} [get]
 func (bc *ChannelController) GetChannel(c fiber.Ctx) error {
