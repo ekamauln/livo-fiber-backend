@@ -8,18 +8,32 @@ definitions:
     required:
     - roleName
     type: object
+  controllers.CreateBoxRequest:
+    properties:
+      boxCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      boxName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - boxCode
+    - boxName
+    type: object
   controllers.CreateRoleRequest:
     properties:
       hierarchy:
         minimum: 1
         type: integer
-      name:
+      roleName:
         maxLength: 50
         minLength: 3
         type: string
     required:
     - hierarchy
-    - name
+    - roleName
     type: object
   controllers.CreateUserRequest:
     properties:
@@ -103,6 +117,20 @@ definitions:
     required:
     - roleName
     type: object
+  controllers.UpdateBoxRequest:
+    properties:
+      boxCode:
+        maxLength: 50
+        minLength: 3
+        type: string
+      boxName:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - boxCode
+    - boxName
+    type: object
   controllers.UpdatePasswordRequest:
     properties:
       confirmNewPassword:
@@ -121,13 +149,13 @@ definitions:
       hierarchy:
         minimum: 1
         type: integer
-      name:
+      roleName:
         maxLength: 50
         minLength: 3
         type: string
     required:
     - hierarchy
-    - name
+    - roleName
     type: object
   controllers.UpdateUserRequest:
     properties:
@@ -143,6 +171,19 @@ definitions:
         example: true
         type: boolean
     type: object
+  models.Box:
+    properties:
+      box_code:
+        type: string
+      box_name:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   models.Role:
     properties:
       created_at:
@@ -152,7 +193,7 @@ definitions:
         type: integer
       id:
         type: integer
-      name:
+      role_name:
         type: string
       updated_at:
         type: string
@@ -401,6 +442,198 @@ paths:
       summary: Register a new user
       tags:
       - Authentication
+  /api/boxes:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of boxes with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of boxes per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for box code or name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Box'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Boxes
+      tags:
+      - Boxes
+    post:
+      consumes:
+      - application/json
+      description: Create a new box
+      parameters:
+      - description: Box details
+        in: body
+        name: box
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateBoxRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Box'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create Box
+      tags:
+      - Boxes
+  /api/boxes/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a box by ID
+      parameters:
+      - description: Box ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Delete Box
+      tags:
+      - Boxes
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single box by ID
+      parameters:
+      - description: Box ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Box'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Box
+      tags:
+      - Boxes
+    put:
+      consumes:
+      - application/json
+      description: Update an existing box by ID
+      parameters:
+      - description: Box ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated box details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateBoxRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Box'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Box
+      tags:
+      - Boxes
   /api/roles:
     get:
       consumes:

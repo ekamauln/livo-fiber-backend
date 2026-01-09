@@ -16,7 +16,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	authController := controllers.NewAuthController(cfg, db)
 	userController := controllers.NewUserController(db)
 	roleController := controllers.NewRoleController(db)
-	// boxController := controllers.NewBoxController()
+	boxController := controllers.NewBoxController(db)
 	// storeController := controllers.NewStoreController()
 	// channelController := controllers.NewChannelController()
 	// productController := controllers.NewProductController()
@@ -153,6 +153,11 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 		})
 	})
 
+	// Redirect root to rapidoc
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.Redirect().Status(fiber.StatusMovedPermanently).To("/rapidoc")
+	})
+
 	// Protected routes
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware(cfg))
@@ -186,12 +191,12 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	roles.Delete("/:id", middleware.RoleMiddleware([]string{"admin", "developer"}), roleController.DeleteRole)
 
 	// Box routes
-	// boxRoutes := protected.Group("/boxes")
-	// boxRoutes.Get("/", boxController.GetBoxes)
-	// boxRoutes.Get("/:id", boxController.GetBox)
-	// boxRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), boxController.CreateBox)
-	// boxRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), boxController.UpdateBox)
-	// boxRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), boxController.DeleteBox)
+	boxRoutes := protected.Group("/boxes")
+	boxRoutes.Get("/", boxController.GetBoxes)
+	boxRoutes.Get("/:id", boxController.GetBox)
+	boxRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), boxController.CreateBox)
+	boxRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), boxController.UpdateBox)
+	boxRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), boxController.DeleteBox)
 
 	// Store routes
 	// storeRoutes := protected.Group("/stores")

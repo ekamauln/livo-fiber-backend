@@ -63,7 +63,7 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 	var total int64
 	query.Count(&total)
 
-	// Retrieve paginated roles
+	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&roles).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,

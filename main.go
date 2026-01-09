@@ -47,7 +47,10 @@ func main() {
 	// Initialize database
 	database.ConnectDatabase(cfg)
 	database.MigrateDatabase()
-	database.SeedDB()
+	database.SeedInitialRole()
+
+	// Get database instance
+	database.GetDB()
 
 	// Create Fiber app with go-joson
 	app := fiber.New(fiber.Config{

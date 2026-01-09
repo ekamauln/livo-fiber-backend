@@ -89,8 +89,8 @@ func MigrateDatabase() error {
 		&models.Role{},
 		&models.User{},
 		&models.Session{},
+		&models.Box{},
 		// &models.Store{},
-		// &models.Box{},
 		// &models.Expedition{},
 		// &models.Product{},
 		// &models.Channel{},
@@ -119,9 +119,9 @@ func MigrateDatabase() error {
 	return nil
 }
 
-// SeedDB seeds initial data into the database
-func SeedDB() error {
-	log.Println("🌱 Seeding initial data into the database...")
+// Seeds initial data into the database
+func SeedInitialRole() error {
+	log.Println("🌱 Seeding initial role data into the database...")
 
 	// Create initial roles
 	roles := []models.Role{
@@ -160,7 +160,48 @@ func SeedDB() error {
 		}
 	}
 
-	log.Println("✅ Database seeding completed successfully")
+	log.Println("✅ Roles seeding completed successfully")
+	return nil
+}
+
+func SeedInitialBox() error {
+	log.Println("🌱 Seeding initial box data into the database...")
+
+	// Create initial boxes
+	boxes := []models.Box{
+		{BoxCode: "AX", BoxName: "Axon"},
+		{BoxCode: "DR", BoxName: "DeParcel Ribbon"},
+		{BoxCode: "AS", BoxName: "Axon Store"},
+		{BoxCode: "AL", BoxName: "Aqualivo"},
+		{BoxCode: "LM", BoxName: "Livo Mall"},
+		{BoxCode: "LI", BoxName: "Livo ID"},
+		{BoxCode: "BI", BoxName: "Bion"},
+		{BoxCode: "AI", BoxName: "Axon ID"},
+		{BoxCode: "AM", BoxName: "Axon Mall"},
+		{BoxCode: "AS", BoxName: "Aqualivo Store"},
+		{BoxCode: "RP", BoxName: "Rumah Pita"},
+		{BoxCode: "SL", BoxName: "Sporti Livo"},
+		{BoxCode: "LT", BoxName: "Livotech"},
+	}
+
+	for _, boxData := range boxes {
+		var existingBox models.Box
+		result := DB.Where("box_code = ?", boxData.BoxCode).First(&existingBox)
+
+		if result.Error == gorm.ErrRecordNotFound {
+			// Create new box
+			box := models.Box{
+				BoxCode: boxData.BoxCode,
+				BoxName: boxData.BoxName,
+			}
+
+			if err := DB.Create(&box).Error; err != nil {
+				return fmt.Errorf("failed to create box %s: %w", boxData.BoxCode, err)
+			}
+		}
+	}
+
+	log.Println("✅ Boxes seeding completed successfully")
 	return nil
 }
 
