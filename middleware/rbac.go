@@ -16,7 +16,7 @@ func RoleMiddleware(allowedRoles []string) fiber.Handler {
 		minHierarchy := 999
 		for _, allowedRole := range allowedRoles {
 			var role models.Role
-			if err := database.DB.Where("name = ?", allowedRole).First(&role).Error; err == nil {
+			if err := database.DB.Where("role_name = ?", allowedRole).First(&role).Error; err == nil {
 				if role.Hierarchy < minHierarchy {
 					minHierarchy = role.Hierarchy
 				}
@@ -26,7 +26,7 @@ func RoleMiddleware(allowedRoles []string) fiber.Handler {
 		// Check if user has any role with equal or higher privilege
 		for _, userRole := range userRoles {
 			var role models.Role
-			if err := database.DB.Where("name = ?", userRole).First(&role).Error; err == nil {
+			if err := database.DB.Where("role_name = ?", userRole).First(&role).Error; err == nil {
 				if role.Hierarchy <= minHierarchy {
 					return c.Next()
 				}

@@ -20,12 +20,12 @@ func NewRoleController(db *gorm.DB) *RoleController {
 
 // Request structs
 type CreateRoleRequest struct {
-	Name      string `json:"name" validate:"required,min=3,max=50"`
+	RoleName  string `json:"roleName" validate:"required,min=3,max=50"`
 	Hierarchy int    `json:"hierarchy" validate:"required,min=1"`
 }
 
 type UpdateRoleRequest struct {
-	Name      string `json:"name" validate:"required,min=3,max=50"`
+	RoleName  string `json:"roleName" validate:"required,min=3,max=50"`
 	Hierarchy int    `json:"hierarchy" validate:"required,min=1"`
 }
 
@@ -56,7 +56,7 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 	// Search condition if provided
 	search := strings.TrimSpace(c.Query("search", ""))
 	if search != "" {
-		query = query.Where("name ILIKE ?", "%"+search+"%")
+		query = query.Where("role_name ILIKE ?", "%"+search+"%")
 	}
 
 	// Get total count for pagination
@@ -143,10 +143,10 @@ func (rc *RoleController) CreateRole(c fiber.Ctx) error {
 
 	// Check for existing role with same name
 	var existingRole models.Role
-	if err := rc.DB.Where("name = ?", req.Name).First(&existingRole).Error; err == nil {
+	if err := rc.DB.Where("role_name = ?", req.RoleName).First(&existingRole).Error; err == nil {
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
-			Error:   "Role with name " + req.Name + " already exists.",
+			Error:   "Role with name " + req.RoleName + " already exists.",
 		})
 	}
 
@@ -155,7 +155,7 @@ func (rc *RoleController) CreateRole(c fiber.Ctx) error {
 	currUserMinHierarchy := 999
 	for _, currUserRoleName := range currUserRoles {
 		var currRole models.Role
-		if err := rc.DB.Where("name = ?", currUserRoleName).First(&currRole).Error; err == nil {
+		if err := rc.DB.Where("role_name = ?", currUserRoleName).First(&currRole).Error; err == nil {
 			if currRole.Hierarchy < currUserMinHierarchy {
 				currUserMinHierarchy = currRole.Hierarchy
 			}
@@ -172,7 +172,7 @@ func (rc *RoleController) CreateRole(c fiber.Ctx) error {
 
 	// Create new role
 	newRole := models.Role{
-		Name:      req.Name,
+		RoleName:  req.RoleName,
 		Hierarchy: req.Hierarchy,
 	}
 
@@ -225,10 +225,10 @@ func (rc *RoleController) UpdateRole(c fiber.Ctx) error {
 
 	// Check for existing role with same name (excluding current role)
 	var existingRole models.Role
-	if err := rc.DB.Where("name = ? AND id != ?", req.Name, id).First(&existingRole).Error; err == nil {
+	if err := rc.DB.Where("role_name = ? AND id != ?", req.RoleName, id).First(&existingRole).Error; err == nil {
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
-			Error:   "Role with name " + req.Name + " already exists.",
+			Error:   "Role with name " + req.RoleName + " already exists.",
 		})
 	}
 
@@ -237,7 +237,7 @@ func (rc *RoleController) UpdateRole(c fiber.Ctx) error {
 	currUserMinHierarchy := 999
 	for _, currUserRoleName := range currUserRoles {
 		var currRole models.Role
-		if err := rc.DB.Where("name = ?", currUserRoleName).First(&currRole).Error; err == nil {
+		if err := rc.DB.Where("role_name = ?", currUserRoleName).First(&currRole).Error; err == nil {
 			if currRole.Hierarchy < currUserMinHierarchy {
 				currUserMinHierarchy = currRole.Hierarchy
 			}
@@ -253,7 +253,7 @@ func (rc *RoleController) UpdateRole(c fiber.Ctx) error {
 	}
 
 	// Update role fields
-	role.Name = req.Name
+	role.RoleName = req.RoleName
 	role.Hierarchy = req.Hierarchy
 
 	if err := rc.DB.Save(&role).Error; err != nil {

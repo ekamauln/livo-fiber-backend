@@ -72,11 +72,11 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 	query := uc.DB.Model(&models.User{}).Order("created_at DESC").Preload("Roles")
 
 	// Filter by role if provided
-	role := strings.TrimSpace(c.Query("role", ""))
-	if role != "" {
+	roleName := strings.TrimSpace(c.Query("roleName", ""))
+	if roleName != "" {
 		query = query.Joins("JOIN user_roles ON users.id = user_roles.user_id").
 			Joins("JOIN roles ON user_roles.role_id = roles.id").
-			Where("roles.name = ?", role)
+			Where("roles.role_name = ?", roleName)
 	}
 
 	// Search condition if provided
@@ -213,7 +213,7 @@ func (uc *UserController) CreateUser(c fiber.Ctx) error {
 	// Assign role if provided
 	if req.RoleName != "" {
 		var role models.Role
-		if err := tx.Where("name = ?", req.RoleName).First(&role).Error; err != nil {
+		if err := tx.Where("role_name = ?", req.RoleName).First(&role).Error; err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
@@ -226,7 +226,7 @@ func (uc *UserController) CreateUser(c fiber.Ctx) error {
 		currUserMinHierarchy := 999
 		for _, currUserRoleName := range currUserRoles {
 			var currRole models.Role
-			if err := tx.Where("name = ?", currUserRoleName).First(&currRole).Error; err == nil {
+			if err := tx.Where("role_name = ?", currUserRoleName).First(&currRole).Error; err == nil {
 				if currRole.Hierarchy < currUserMinHierarchy {
 					currUserMinHierarchy = currRole.Hierarchy
 				}
@@ -507,7 +507,7 @@ func (uc *UserController) AssignRole(c fiber.Ctx) error {
 
 	// Get the role to assign
 	var role models.Role
-	if err := uc.DB.Where("name = ?", req.RoleName).First(&role).Error; err != nil {
+	if err := uc.DB.Where("role_name = ?", req.RoleName).First(&role).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid role name",
@@ -528,7 +528,7 @@ func (uc *UserController) AssignRole(c fiber.Ctx) error {
 	currUserMinHierarchy := 999
 	for _, currUserRoleName := range currUserRoles {
 		var currRole models.Role
-		if err := uc.DB.Where("name = ?", currUserRoleName).First(&currRole).Error; err == nil {
+		if err := uc.DB.Where("role_name = ?", currUserRoleName).First(&currRole).Error; err == nil {
 			if currRole.Hierarchy < currUserMinHierarchy {
 				currUserMinHierarchy = currRole.Hierarchy
 			}
@@ -598,7 +598,7 @@ func (uc *UserController) RemoveRole(c fiber.Ctx) error {
 
 	// Get the role to remove
 	var role models.Role
-	if err := uc.DB.Where("name = ?", req.RoleName).First(&role).Error; err != nil {
+	if err := uc.DB.Where("role_name = ?", req.RoleName).First(&role).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid role name",
@@ -619,7 +619,7 @@ func (uc *UserController) RemoveRole(c fiber.Ctx) error {
 	currUserMinHierarchy := 999
 	for _, currUserRoleName := range currUserRoles {
 		var currRole models.Role
-		if err := uc.DB.Where("name = ?", currUserRoleName).First(&currRole).Error; err == nil {
+		if err := uc.DB.Where("role_name = ?", currUserRoleName).First(&currRole).Error; err == nil {
 			if currRole.Hierarchy < currUserMinHierarchy {
 				currUserMinHierarchy = currRole.Hierarchy
 			}

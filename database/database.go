@@ -126,36 +126,36 @@ func SeedDB() error {
 	// Create initial roles
 	roles := []models.Role{
 		// Highest privilege roles
-		{Name: "developer", Hierarchy: 1},
+		{RoleName: "developer", Hierarchy: 1},
 		// Management roles
-		{Name: "superadmin", Hierarchy: 10},
-		{Name: "coordinator", Hierarchy: 10},
-		{Name: "hrd", Hierarchy: 10},
+		{RoleName: "superadmin", Hierarchy: 10},
+		{RoleName: "coordinator", Hierarchy: 10},
+		{RoleName: "hrd", Hierarchy: 10},
 		// Operational roles
-		{Name: "admin", Hierarchy: 15},
-		{Name: "finance", Hierarchy: 15},
+		{RoleName: "admin", Hierarchy: 15},
+		{RoleName: "finance", Hierarchy: 15},
 		// Worker roles
-		{Name: "picker", Hierarchy: 20},
-		{Name: "qc-ribbon", Hierarchy: 20},
-		{Name: "qc-online", Hierarchy: 20},
-		{Name: "outbound", Hierarchy: 20},
+		{RoleName: "picker", Hierarchy: 20},
+		{RoleName: "qc-ribbon", Hierarchy: 20},
+		{RoleName: "qc-online", Hierarchy: 20},
+		{RoleName: "outbound", Hierarchy: 20},
 		// Lowest privilege role
-		{Name: "guest", Hierarchy: 99},
+		{RoleName: "guest", Hierarchy: 99},
 	}
 
 	for _, roleData := range roles {
 		var existingRole models.Role
-		result := DB.Where("name = ?", roleData.Name).First(&existingRole)
+		result := DB.Where("role_name = ?", roleData.RoleName).First(&existingRole)
 
 		if result.Error == gorm.ErrRecordNotFound {
 			// Create new role
 			role := models.Role{
-				Name:      roleData.Name,
+				RoleName:  roleData.RoleName,
 				Hierarchy: roleData.Hierarchy,
 			}
 
 			if err := DB.Create(&role).Error; err != nil {
-				return fmt.Errorf("failed to create role %s: %w", roleData.Name, err)
+				return fmt.Errorf("failed to create role %s: %w", roleData.RoleName, err)
 			}
 		}
 	}

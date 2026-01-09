@@ -45,7 +45,7 @@ func (u *User) ToResponse() *UserResponse {
 	// Extract role names
 	roleNames := make([]string, len(u.Roles))
 	for i, role := range u.Roles {
-		roleNames[i] = role.Name
+		roleNames[i] = role.RoleName
 	}
 
 	// Extract session IDs

@@ -88,7 +88,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 
 	// Get guest role first to ensure it exists
 	var guestRole models.Role
-	if err := database.DB.Where("name = ?", "guest").First(&guestRole).Error; err != nil {
+	if err := database.DB.Where("role_name = ?", "guest").First(&guestRole).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to get default role",
@@ -189,7 +189,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 	// Get role names
 	roleNames := make([]string, len(user.Roles))
 	for i, role := range user.Roles {
-		roleNames[i] = role.Name
+		roleNames[i] = role.RoleName
 	}
 
 	// Generate tokens
@@ -392,7 +392,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 	// Get role names
 	roleNames := make([]string, len(session.User.Roles))
 	for i, role := range session.User.Roles {
-		roleNames[i] = role.Name
+		roleNames[i] = role.RoleName
 	}
 
 	// Generate new access token
