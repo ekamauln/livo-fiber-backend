@@ -91,8 +91,8 @@ func MigrateDatabase() error {
 		&models.Session{},
 		&models.Box{},
 		&models.Channel{},
+		&models.Expedition{},
 		// &models.Store{},
-		// &models.Expedition{},
 		// &models.Product{},
 		// &models.Order{},
 		// &models.OrderDetail{},
@@ -236,6 +236,78 @@ func SeedInitialChannel() error {
 	}
 
 	log.Println("✅ Channels seeding completed successfully")
+	return nil
+}
+
+func SeedInitialExpedition() error {
+	log.Println("🌱 Seeding initial expedition data into the database...")
+
+	// Create initial expeditions
+	expeditions := []models.Expedition{
+		{ExpeditionCode: "TKP0", ExpeditionName: "JNE/ID-Express", ExpeditionSlug: "jne-id-express", ExpeditionColor: "#006072"}, // JNE/ID Express
+		{ExpeditionCode: "PJ", ExpeditionName: "Offline", ExpeditionSlug: "offline", ExpeditionColor: "#000000"},                 // Offline
+		{ExpeditionCode: "INS", ExpeditionName: "Instant", ExpeditionSlug: "instant", ExpeditionColor: "#00d0dd"},                // Instant
+		{ExpeditionCode: "BLMP", ExpeditionName: "Paxel", ExpeditionSlug: "paxel", ExpeditionColor: "#5f50a0"},                   // Paxel
+		{ExpeditionCode: "LX", ExpeditionName: "LEX", ExpeditionSlug: "lex", ExpeditionColor: "#0c5eb4"},                         // LEX
+		{ExpeditionCode: "NL", ExpeditionName: "LEX", ExpeditionSlug: "lex", ExpeditionColor: "#0c5eb4"},                         // LEX
+		{ExpeditionCode: "JN", ExpeditionName: "LEX", ExpeditionSlug: "lex", ExpeditionColor: "#0c5eb4"},                         // LEX
+		{ExpeditionCode: "JZ", ExpeditionName: "LEX", ExpeditionSlug: "lex", ExpeditionColor: "#0c5eb4"},                         // LEX
+		{ExpeditionCode: "SP", ExpeditionName: "SPX", ExpeditionSlug: "spx", ExpeditionColor: "#ff7300"},                         // SPX
+		{ExpeditionCode: "ID2", ExpeditionName: "SPX", ExpeditionSlug: "spx", ExpeditionColor: "#ff7300"},                        // SPX
+		{ExpeditionCode: "TSA", ExpeditionName: "AnterAja", ExpeditionSlug: "anteraja", ExpeditionColor: "#ff007a"},              // AnterAja
+		{ExpeditionCode: "1100", ExpeditionName: "AnterAja", ExpeditionSlug: "anteraja", ExpeditionColor: "#ff007a"},             // AnterAja
+		{ExpeditionCode: "TAA", ExpeditionName: "AnterAja", ExpeditionSlug: "anteraja", ExpeditionColor: "#ff007a"},              // AnterAja
+		{ExpeditionCode: "TLJX", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                       // JNE
+		{ExpeditionCode: "41", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                         // JNE
+		{ExpeditionCode: "CM", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                         // JNE
+		{ExpeditionCode: "BLIJ", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                       // JNE
+		{ExpeditionCode: "JT", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                         // JNE
+		{ExpeditionCode: "TG", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                         // JNE
+		{ExpeditionCode: "TLJR", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                       // JNE
+		{ExpeditionCode: "TLJC", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                       // JNE
+		{ExpeditionCode: "JNE", ExpeditionName: "JNE", ExpeditionSlug: "jne", ExpeditionColor: "#032078"},                        // JNE
+		{ExpeditionCode: "JO", ExpeditionName: "J&T Express", ExpeditionSlug: "j&t-express", ExpeditionColor: "#ff0000"},         // J&T Express
+		{ExpeditionCode: "JD", ExpeditionName: "J&T Express", ExpeditionSlug: "j&t-express", ExpeditionColor: "#ff0000"},         // J&T Express
+		{ExpeditionCode: "JJ", ExpeditionName: "J&T Express", ExpeditionSlug: "j&t-express", ExpeditionColor: "#ff0000"},         // J&T Express
+		{ExpeditionCode: "JB", ExpeditionName: "J&T Express", ExpeditionSlug: "j&t-express", ExpeditionColor: "#ff0000"},         // J&T Express
+		{ExpeditionCode: "JP", ExpeditionName: "J&T Express", ExpeditionSlug: "j&t-express", ExpeditionColor: "#ff0000"},         // J&T Express
+		{ExpeditionCode: "JX", ExpeditionName: "J&T Express", ExpeditionSlug: "j&t-express", ExpeditionColor: "#ff0000"},         // J&T Express
+		{ExpeditionCode: "TKJN", ExpeditionName: "J&T Express", ExpeditionSlug: "j&t-express", ExpeditionColor: "#ff0000"},       // J&T Express
+		{ExpeditionCode: "IDS", ExpeditionName: "ID Express", ExpeditionSlug: "id-express", ExpeditionColor: "#b30000"},          // ID Express
+		{ExpeditionCode: "TKP8", ExpeditionName: "ID Express", ExpeditionSlug: "id-express", ExpeditionColor: "#b30000"},         // ID Express
+		{ExpeditionCode: "300", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},            // J&T Cargo
+		{ExpeditionCode: "2012", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "2011", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "2010", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "2009", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "2008", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "2007", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "2006", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "2005", ExpeditionName: "J&T Cargo", ExpeditionSlug: "j&t-cargo", ExpeditionColor: "#008601"},           // J&T Cargo
+		{ExpeditionCode: "TS", ExpeditionName: "Wahana", ExpeditionSlug: "wahana", ExpeditionColor: "#ffa100"},                   // Wahana
+		{ExpeditionCode: "SIC", ExpeditionName: "SiCepat", ExpeditionSlug: "sicepat", ExpeditionColor: "#830000"},
+	}
+
+	for _, expeditionData := range expeditions {
+		var existingExpedition models.Expedition
+		result := DB.Where("expedition_code = ?", expeditionData.ExpeditionCode).First(&existingExpedition)
+
+		if result.Error == gorm.ErrRecordNotFound {
+			// Create new expedition
+			expedition := models.Expedition{
+				ExpeditionCode:  expeditionData.ExpeditionCode,
+				ExpeditionName:  expeditionData.ExpeditionName,
+				ExpeditionSlug:  expeditionData.ExpeditionCode,
+				ExpeditionColor: expeditionData.ExpeditionCode,
+			}
+
+			if err := DB.Create(&expedition).Error; err != nil {
+				return fmt.Errorf("failed to create expedition %s: %w", expeditionData.ExpeditionCode, err)
+			}
+		}
+	}
+
+	log.Println("✅ Expeditions seeding completed successfully")
 	return nil
 }
 

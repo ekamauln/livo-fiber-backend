@@ -18,9 +18,9 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	roleController := controllers.NewRoleController(db)
 	boxController := controllers.NewBoxController(db)
 	channelController := controllers.NewChannelController(db)
+	expeditionController := controllers.NewExpeditionController(db)
 	// storeController := controllers.NewStoreController()
 	// productController := controllers.NewProductController()
-	// expeditionController := controllers.NewExpeditionController()
 	// orderController := controllers.NewOrderController()
 	// qcOnlineController := controllers.NewQCOnlineController()
 	// qcRibbonController := controllers.NewQCRibbonController()
@@ -206,6 +206,14 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	channelRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), channelController.UpdateChannel)
 	channelRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), channelController.DeleteChannel)
 
+	// Expedition routes
+	expeditionRoutes := protected.Group("/expeditions")
+	expeditionRoutes.Get("/", expeditionController.GetExpeditions)
+	expeditionRoutes.Get("/:id", expeditionController.GetExpedition)
+	expeditionRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), expeditionController.CreateExpedition)
+	expeditionRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), expeditionController.UpdateExpedition)
+	expeditionRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), expeditionController.DeleteExpedition)
+
 	// Store routes
 	// storeRoutes := protected.Group("/stores")
 	// storeRoutes.Get("/", storeController.GetStores)
@@ -221,14 +229,6 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// productRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.CreateProduct)
 	// productRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.UpdateProduct)
 	// productRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), productController.DeleteProduct)
-
-	// Expedition routes
-	// expeditionRoutes := protected.Group("/expeditions")
-	// expeditionRoutes.Get("/", expeditionController.GetExpeditions)
-	// expeditionRoutes.Get("/:id", expeditionController.GetExpedition)
-	// expeditionRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), expeditionController.CreateExpedition)
-	// expeditionRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), expeditionController.UpdateExpedition)
-	// expeditionRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), expeditionController.DeleteExpedition)
 
 	// Order routes
 	// orderRoutes := protected.Group("/orders")
