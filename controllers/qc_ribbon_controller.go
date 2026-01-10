@@ -38,11 +38,13 @@ type QCRibbonDetailRequest struct {
 // @Tags QC Ribbons
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of QC Ribbons per page" default(10)
 // @Param search query string false "Search term for tracking number"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.QCRibbonResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/qc-ribbons [get]
 func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
@@ -124,9 +126,11 @@ func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 // @Tags QC Ribbons
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "QC Ribbon ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.QCRibbonResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/qc-ribbons/{id} [get]
@@ -154,9 +158,11 @@ func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 // @Tags QC Ribbons
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param qcRibbon body CreateQCRibbonRequest true "QC Ribbon details"
 // @Success 201 {object} utils.SuccessResponse{data=models.QCRibbonResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/qc-ribbons [post]

@@ -42,11 +42,13 @@ type UpdateProductRequest struct {
 // @Tags Products
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of Products per page" default(10)
 // @Param search query string false "Search term for product SKU or name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Product}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products [get]
@@ -116,9 +118,12 @@ func (pc *ProductController) GetProducts(c fiber.Ctx) error {
 // @Tags Products
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Product ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Product}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products/{id} [get]
 func (pc *ProductController) GetProduct(c fiber.Ctx) error {
@@ -145,9 +150,11 @@ func (pc *ProductController) GetProduct(c fiber.Ctx) error {
 // @Tags Products
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param product body CreateProductRequest true "Product details"
 // @Success 201 {object} utils.SuccessResponse{data=models.Product}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products [post]
@@ -202,10 +209,12 @@ func (pc *ProductController) CreateProduct(c fiber.Ctx) error {
 // @Tags Products
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Product ID"
 // @Param request body UpdateProductRequest true "Updated product details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Product}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products/{id} [put]
@@ -268,9 +277,11 @@ func (pc *ProductController) UpdateProduct(c fiber.Ctx) error {
 // @Tags Products
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Product ID"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products/{id} [delete]

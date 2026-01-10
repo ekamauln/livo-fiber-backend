@@ -110,6 +110,7 @@ type DuplicatedOrderResponse struct {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of orders per page" default(10)
 // @Param startDate query string false "Start date (YYYY-MM-DD format)"
@@ -117,6 +118,7 @@ type DuplicatedOrderResponse struct {
 // @Param search query string false "Search term for order ginee id or tracking number"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders [get]
 func (oc *OrderController) GetOrders(c fiber.Ctx) error {
@@ -224,9 +226,11 @@ func (oc *OrderController) GetOrders(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Order ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id} [get]
@@ -254,9 +258,11 @@ func (oc *OrderController) GetOrder(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param order body CreateOrderRequest true "Order details"
 // @Success 201 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders [post]
@@ -383,9 +389,11 @@ func (oc *OrderController) CreateOrder(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param orders body BulkCreateOrdersRequest true "List of orders to create"
 // @Success 201 {object} utils.SuccessResponse{data=BulkCreateOrdersReponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/bulk [post]
 func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
@@ -527,10 +535,12 @@ func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Order ID"
 // @Param order body UpdateOrderRequest true "Updated order details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id} [put]
@@ -671,9 +681,11 @@ func (oc *OrderController) UpdateOrder(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Order ID"
 // @Success 201 {object} utils.SuccessResponse{data=DuplicatedOrderResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id}/duplicate [put]
@@ -835,9 +847,11 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Order ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id}/cancel [put]
@@ -941,9 +955,11 @@ func (oc *OrderController) CancelOrder(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param picker body AssignPickerRequest true "Picker assignment details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/assign-picker [post]
@@ -1038,9 +1054,11 @@ func (oc *OrderController) AssignPicker(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Order ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id}/pending-picking [put]
@@ -1112,6 +1130,7 @@ func (oc *OrderController) PendingPickingOrders(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of items per page" default(10)
 // @Param start_date query string false "Start date for filtering (YYYY-MM-DD)"
@@ -1119,6 +1138,7 @@ func (oc *OrderController) PendingPickingOrders(c fiber.Ctx) error {
 // @Param search query string false "Search term for filtering"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/assigned [get]
 func (oc *OrderController) GetAssignedOrders(c fiber.Ctx) error {
@@ -1226,9 +1246,11 @@ func (oc *OrderController) GetAssignedOrders(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Order ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id}/status/qc-process [put]
@@ -1291,9 +1313,11 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 // @Tags Orders
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Order ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id}/status/picking-completed [put]

@@ -36,11 +36,13 @@ type UpdateStoreRequest struct {
 // @Tags Stores
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of stores per page" default(10)
 // @Param search query string false "Search term for store code or name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Store}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores [get]
@@ -110,9 +112,11 @@ func (bc *StoreController) GetStores(c fiber.Ctx) error {
 // @Tags Stores
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Store ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Store}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores/{id} [get]
 func (bc *StoreController) GetStore(c fiber.Ctx) error {
@@ -139,9 +143,11 @@ func (bc *StoreController) GetStore(c fiber.Ctx) error {
 // @Tags Stores
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param store body CreateStoreRequest true "Store details"
 // @Success 201 {object} utils.SuccessResponse{data=models.Store}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores [post]
@@ -193,10 +199,12 @@ func (bc *StoreController) CreateStore(c fiber.Ctx) error {
 // @Tags Stores
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Store ID"
 // @Param request body UpdateStoreRequest true "Updated store details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Store}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores/{id} [put]
@@ -256,9 +264,11 @@ func (bc *StoreController) UpdateStore(c fiber.Ctx) error {
 // @Tags Stores
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Store ID"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores/{id} [delete]

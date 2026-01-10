@@ -36,11 +36,13 @@ type UpdateBoxRequest struct {
 // @Tags Boxes
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of boxes per page" default(10)
 // @Param search query string false "Search term for box code or name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Box}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/boxes [get]
 func (bc *BoxController) GetBoxes(c fiber.Ctx) error {
@@ -109,9 +111,11 @@ func (bc *BoxController) GetBoxes(c fiber.Ctx) error {
 // @Tags Boxes
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Box ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Box}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/boxes/{id} [get]
@@ -139,9 +143,11 @@ func (bc *BoxController) GetBox(c fiber.Ctx) error {
 // @Tags Boxes
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param box body CreateBoxRequest true "Box details"
 // @Success 201 {object} utils.SuccessResponse{data=models.Box}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/boxes [post]
@@ -193,10 +199,12 @@ func (bc *BoxController) CreateBox(c fiber.Ctx) error {
 // @Tags Boxes
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Box ID"
 // @Param request body UpdateBoxRequest true "Updated box details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Box}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/boxes/{id} [put]
@@ -256,9 +264,11 @@ func (bc *BoxController) UpdateBox(c fiber.Ctx) error {
 // @Tags Boxes
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Box ID"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/boxes/{id} [delete]

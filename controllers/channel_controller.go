@@ -36,11 +36,13 @@ type UpdateChannelRequest struct {
 // @Tags Channels
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of channels per page" default(10)
 // @Param search query string false "Search term for channel code or name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Channel}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/channels [get]
 func (bc *ChannelController) GetChannels(c fiber.Ctx) error {
@@ -109,9 +111,11 @@ func (bc *ChannelController) GetChannels(c fiber.Ctx) error {
 // @Tags Channels
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Channel ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Channel}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/channels/{id} [get]
@@ -139,9 +143,11 @@ func (bc *ChannelController) GetChannel(c fiber.Ctx) error {
 // @Tags Channels
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param channel body CreateChannelRequest true "Channel details"
 // @Success 201 {object} utils.SuccessResponse{data=models.Channel}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/channels [post]
@@ -193,10 +199,12 @@ func (bc *ChannelController) CreateChannel(c fiber.Ctx) error {
 // @Tags Channels
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Channel ID"
 // @Param request body UpdateChannelRequest true "Updated channel details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Channel}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/channels/{id} [put]
@@ -256,9 +264,11 @@ func (bc *ChannelController) UpdateChannel(c fiber.Ctx) error {
 // @Tags Channels
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Channel ID"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/channels/{id} [delete]

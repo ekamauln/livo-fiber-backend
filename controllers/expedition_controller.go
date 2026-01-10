@@ -38,11 +38,13 @@ type UpdateExpeditionRequest struct {
 // @Tags Expeditions
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of expeditions per page" default(10)
 // @Param search query string false "Search term for expedition code or name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Expedition}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/expeditions [get]
@@ -112,9 +114,11 @@ func (bc *ExpeditionController) GetExpeditions(c fiber.Ctx) error {
 // @Tags Expeditions
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Expedition ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Expedition}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/expeditions/{id} [get]
 func (bc *ExpeditionController) GetExpedition(c fiber.Ctx) error {
@@ -141,9 +145,11 @@ func (bc *ExpeditionController) GetExpedition(c fiber.Ctx) error {
 // @Tags Expeditions
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param expedition body CreateExpeditionRequest true "Expedition details"
 // @Success 201 {object} utils.SuccessResponse{data=models.Expedition}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/expeditions [post]
@@ -197,10 +203,12 @@ func (bc *ExpeditionController) CreateExpedition(c fiber.Ctx) error {
 // @Tags Expeditions
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Expedition ID"
 // @Param request body UpdateExpeditionRequest true "Updated expedition details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Expedition}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/expeditions/{id} [put]
@@ -262,9 +270,11 @@ func (bc *ExpeditionController) UpdateExpedition(c fiber.Ctx) error {
 // @Tags Expeditions
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Expedition ID"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/expeditions/{id} [delete]

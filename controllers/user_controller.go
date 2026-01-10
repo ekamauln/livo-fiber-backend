@@ -53,12 +53,14 @@ type RemoveRoleRequest struct {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of users per page" default(10)
 // @Param search query string false "Search term for username or full name"
 // @Param role query string false "Filter users by role name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.UserResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users [get]
@@ -136,9 +138,11 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "User ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.UserResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id} [get]
@@ -166,9 +170,11 @@ func (uc *UserController) GetUser(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param request body CreateUserRequest true "User details"
 // @Success 201 {object} utils.SuccessResponse{data=models.UserResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users [post]
@@ -301,10 +307,12 @@ func (uc *UserController) CreateUser(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "User ID"
 // @Param request body UpdateUserRequest true "Updated user details"
 // @Success 200 {object} utils.SuccessResponse{data=models.UserResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id} [put]
@@ -392,10 +400,12 @@ func (uc *UserController) UpdateUser(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "User ID"
 // @Param request body UpdatePasswordRequest true "Updated password details"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/password [put]
@@ -470,9 +480,11 @@ func (uc *UserController) UpdatePassword(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "User ID"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id} [delete]
@@ -510,10 +522,12 @@ func (uc *UserController) DeleteUser(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "User ID"
 // @Param request body AssignRoleRequest true "Role to assign"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/roles [post]
@@ -610,10 +624,12 @@ func (uc *UserController) AssignRole(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "User ID"
 // @Param request body RemoveRoleRequest true "Role to remove"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/roles [delete]
@@ -705,9 +721,11 @@ func (uc *UserController) RemoveRole(c fiber.Ctx) error {
 // @Tags Users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "User ID"
 // @Success 200 {object} utils.SuccessResponse{data=[]models.SessionResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/sessions [get]

@@ -36,11 +36,13 @@ type UpdateRoleRequest struct {
 // @Tags Roles
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of roles per page" default(10)
 // @Param search query string false "Search term for role name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Role}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles [get]
@@ -110,9 +112,11 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 // @Tags Roles
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Role ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.Role}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles/{id} [get]
@@ -140,9 +144,11 @@ func (rc *RoleController) GetRole(c fiber.Ctx) error {
 // @Tags Roles
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param request body CreateRoleRequest true "Role details"
 // @Success 201 {object} utils.SuccessResponse{data=models.Role}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles [post]
@@ -211,10 +217,12 @@ func (rc *RoleController) CreateRole(c fiber.Ctx) error {
 // @Tags Roles
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Role ID"
 // @Param request body UpdateRoleRequest true "Updated role details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Role}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles/{id} [put]
@@ -291,9 +299,11 @@ func (rc *RoleController) UpdateRole(c fiber.Ctx) error {
 // @Tags Roles
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Role ID"
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles/{id} [delete]

@@ -38,11 +38,13 @@ type QCOnlineDetailRequest struct {
 // @Tags QC Onlines
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of QC Onlines per page" default(10)
 // @Param search query string false "Search term for tracking number"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.QCOnlineResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/qc-onlines [get]
 func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
@@ -124,9 +126,11 @@ func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 // @Tags QC Onlines
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "QC Online ID"
 // @Success 200 {object} utils.SuccessResponse{data=models.QCOnlineResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/qc-onlines/{id} [get]
@@ -154,9 +158,11 @@ func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 // @Tags QC Onlines
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param qcOnline body CreateQCOnlineRequest true "QC Online details"
 // @Success 201 {object} utils.SuccessResponse{data=models.QCOnlineResponse}
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/qc-onlines [post]
