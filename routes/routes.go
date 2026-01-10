@@ -22,8 +22,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	storeController := controllers.NewStoreController(db)
 	productController := controllers.NewProductController(db)
 	orderController := controllers.NewOrderController(db)
-	// qcOnlineController := controllers.NewQCOnlineController()
-	// qcRibbonController := controllers.NewQCRibbonController()
+	qcRibbonController := controllers.NewQCRibbonController(db)
+	qcOnlineController := controllers.NewQCOnlineController(db)
 	// outboundController := controllers.NewOutboundController()
 	// reportController := controllers.NewReportController()
 	// returnController := controllers.NewReturnController()
@@ -250,14 +250,14 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	orderRoutes.Get("/assigned", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.GetAssignedOrders)
 
 	// QCRibbon routes
-	// qcRibbonRoutes := protected.Group("/qc-ribbons")
-	// qcRibbonRoutes.Get("/", qcRibbonController.GetQCRibbons)
-	// qcRibbonRoutes.Post("/", qcRibbonController.CreateQCRibbon)
+	qcRibbonRoutes := protected.Group("/qc-ribbons")
+	qcRibbonRoutes.Get("/", qcRibbonController.GetQCRibbons)
+	qcRibbonRoutes.Post("/", qcRibbonController.CreateQCRibbon)
 
 	// QCOnline routes
-	// qcOnlineRoutes := protected.Group("/qc-onlines")
-	// qcOnlineRoutes.Get("/", qcOnlineController.GetQCOnlines)
-	// qcOnlineRoutes.Post("/", qcOnlineController.CreateQCOnline)
+	qcOnlineRoutes := protected.Group("/qc-onlines")
+	qcOnlineRoutes.Get("/", qcOnlineController.GetQCOnlines)
+	qcOnlineRoutes.Post("/", qcOnlineController.CreateQCOnline)
 
 	// Outbound routes
 	// outboundRoutes := protected.Group("/outbounds")

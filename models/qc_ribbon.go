@@ -27,14 +27,14 @@ type QCRibbonDetail struct {
 
 // QCRibbonResponse represents the QC Ribbon data returned in API responses
 type QCRibbonResponse struct {
-	ID              uint                     `json:"id"`
-	TrackingNumber  string                   `json:"trackingNumber"`
-	QCBy            string                   `json:"qcBy"`
-	CreatedAt       string                   `json:"createdAt"`
-	UpdatedAt       string                   `json:"updatedAt"`
-	Complained      bool                     `json:"complained"`
-	QCRibbonDetails []QCRibbonDetailResponse `json:"qcRibbonDetails,omitempty"`
-	Order           *OrderResponse           `json:"order,omitempty"`
+	ID             uint                     `json:"id"`
+	TrackingNumber string                   `json:"trackingNumber"`
+	QCBy           string                   `json:"qcBy"`
+	CreatedAt      string                   `json:"createdAt"`
+	UpdatedAt      string                   `json:"updatedAt"`
+	Complained     bool                     `json:"complained"`
+	Details        []QCRibbonDetailResponse `json:"details,omitempty"`
+	Order          *OrderResponse           `json:"order,omitempty"`
 }
 
 type QCRibbonDetailResponse struct {
@@ -47,8 +47,12 @@ func (qcr *QCRibbon) ToResponse() *QCRibbonResponse {
 	// Convert QC Ribbon Details
 	details := make([]QCRibbonDetailResponse, len(qcr.QCRibbonDetails))
 	for i, detail := range qcr.QCRibbonDetails {
+		boxName := ""
+		if detail.Box != nil {
+			boxName = detail.Box.BoxName
+		}
 		detailResp := QCRibbonDetailResponse{
-			Box:      detail.Box.BoxName,
+			Box:      boxName,
 			Quantity: detail.Quantity,
 		}
 		details[i] = detailResp
@@ -67,13 +71,13 @@ func (qcr *QCRibbon) ToResponse() *QCRibbonResponse {
 	}
 
 	return &QCRibbonResponse{
-		ID:              qcr.ID,
-		TrackingNumber:  qcr.TrackingNumber,
-		QCBy:            qcBy,
-		CreatedAt:       qcr.CreatedAt.Format("02-01-2006 15:04:05"),
-		UpdatedAt:       qcr.UpdatedAt.Format("02-01-2006 15:04:05"),
-		Complained:      qcr.Complained,
-		QCRibbonDetails: details,
-		Order:           orderResponse,
+		ID:             qcr.ID,
+		TrackingNumber: qcr.TrackingNumber,
+		QCBy:           qcBy,
+		CreatedAt:      qcr.CreatedAt.Format("02-01-2006 15:04:05"),
+		UpdatedAt:      qcr.UpdatedAt.Format("02-01-2006 15:04:05"),
+		Complained:     qcr.Complained,
+		Details:        details,
+		Order:          orderResponse,
 	}
 }

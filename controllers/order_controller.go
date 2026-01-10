@@ -1150,7 +1150,6 @@ func (oc *OrderController) GetAssignedOrders(c fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param id path int true "Order ID"
-// @Param qcStatus body QCProcessStatusUpdateRequest true "QC process status details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
@@ -1207,7 +1206,6 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param id path int true "Order ID"
-// @Param pickingComplete body PickingCompleteStatusUpdateRequest true "Picking complete status details"
 // @Success 200 {object} utils.SuccessResponse{data=models.Order}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse

@@ -27,14 +27,14 @@ type QCOnlineDetail struct {
 
 // QCOnlineResponse represents the QC Online data returned in API responses
 type QCOnlineResponse struct {
-	ID              uint                     `json:"id"`
-	TrackingNumber  string                   `json:"trackingNumber"`
-	QCBy            string                   `json:"qcBy"`
-	CreatedAt       string                   `json:"createdAt"`
-	UpdatedAt       string                   `json:"updatedAt"`
-	Complained      bool                     `json:"complained"`
-	QCOnlineDetails []QCOnlineDetailResponse `json:"qcOnlineDetails,omitempty"`
-	Order           *OrderResponse           `json:"order,omitempty"`
+	ID             uint                     `json:"id"`
+	TrackingNumber string                   `json:"trackingNumber"`
+	QCBy           string                   `json:"qcBy"`
+	CreatedAt      string                   `json:"createdAt"`
+	UpdatedAt      string                   `json:"updatedAt"`
+	Complained     bool                     `json:"complained"`
+	Details        []QCOnlineDetailResponse `json:"details,omitempty"`
+	Order          *OrderResponse           `json:"order,omitempty"`
 }
 
 type QCOnlineDetailResponse struct {
@@ -47,8 +47,12 @@ func (qcr *QCOnline) ToResponse() *QCOnlineResponse {
 	// Convert QC Online Details
 	details := make([]QCOnlineDetailResponse, len(qcr.QCOnlineDetails))
 	for i, detail := range qcr.QCOnlineDetails {
+		boxName := ""
+		if detail.Box != nil {
+			boxName = detail.Box.BoxName
+		}
 		detailResp := QCOnlineDetailResponse{
-			Box:      detail.Box.BoxName,
+			Box:      boxName,
 			Quantity: detail.Quantity,
 		}
 		details[i] = detailResp
@@ -67,13 +71,13 @@ func (qcr *QCOnline) ToResponse() *QCOnlineResponse {
 	}
 
 	return &QCOnlineResponse{
-		ID:              qcr.ID,
-		TrackingNumber:  qcr.TrackingNumber,
-		QCBy:            qcBy,
-		CreatedAt:       qcr.CreatedAt.Format("02-01-2006 15:04:05"),
-		UpdatedAt:       qcr.UpdatedAt.Format("02-01-2006 15:04:05"),
-		Complained:      qcr.Complained,
-		QCOnlineDetails: details,
-		Order:           orderResponse,
+		ID:             qcr.ID,
+		TrackingNumber: qcr.TrackingNumber,
+		QCBy:           qcBy,
+		CreatedAt:      qcr.CreatedAt.Format("02-01-2006 15:04:05"),
+		UpdatedAt:      qcr.UpdatedAt.Format("02-01-2006 15:04:05"),
+		Complained:     qcr.Complained,
+		Details:        details,
+		Order:          orderResponse,
 	}
 }

@@ -1,5 +1,17 @@
 basePath: /
 definitions:
+  controllers.AssignPickerRequest:
+    properties:
+      pickerId:
+        type: integer
+      trackingNumber:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - pickerId
+    - trackingNumber
+    type: object
   controllers.AssignRoleRequest:
     properties:
       roleName:
@@ -184,6 +196,30 @@ definitions:
     - name
     - sku
     type: object
+  controllers.CreateQCOnlineRequest:
+    properties:
+      qcOnlineDetails:
+        items:
+          $ref: '#/definitions/controllers.QCOnlineDetailRequest'
+        type: array
+      trackingNumber:
+        type: string
+    required:
+    - qcOnlineDetails
+    - trackingNumber
+    type: object
+  controllers.CreateQCRibbonRequest:
+    properties:
+      qcRibbonDetails:
+        items:
+          $ref: '#/definitions/controllers.QCRibbonDetailRequest'
+        type: array
+      trackingNumber:
+        type: string
+    required:
+    - qcRibbonDetails
+    - trackingNumber
+    type: object
   controllers.CreateRoleRequest:
     properties:
       hierarchy:
@@ -269,6 +305,28 @@ definitions:
     required:
     - password
     - username
+    type: object
+  controllers.QCOnlineDetailRequest:
+    properties:
+      boxId:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - boxId
+    - quantity
+    type: object
+  controllers.QCRibbonDetailRequest:
+    properties:
+      boxId:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - boxId
+    - quantity
     type: object
   controllers.RefreshTokenRequest:
     properties:
@@ -615,8 +673,6 @@ definitions:
     type: object
   models.OrderDetailResponse:
     properties:
-      orderId:
-        type: integer
       price:
         type: integer
       product:
@@ -725,6 +781,62 @@ definitions:
       updatedAt:
         type: string
       variant:
+        type: string
+    type: object
+  models.QCOnlineDetailResponse:
+    properties:
+      box:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  models.QCOnlineResponse:
+    properties:
+      complained:
+        type: boolean
+      createdAt:
+        type: string
+      id:
+        type: integer
+      order:
+        $ref: '#/definitions/models.OrderResponse'
+      qcBy:
+        type: string
+      qcOnlineDetails:
+        items:
+          $ref: '#/definitions/models.QCOnlineDetailResponse'
+        type: array
+      trackingNumber:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.QCRibbonDetailResponse:
+    properties:
+      box:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  models.QCRibbonResponse:
+    properties:
+      complained:
+        type: boolean
+      createdAt:
+        type: string
+      id:
+        type: integer
+      order:
+        $ref: '#/definitions/models.OrderResponse'
+      qcBy:
+        type: string
+      qcRibbonDetails:
+        items:
+          $ref: '#/definitions/models.QCRibbonDetailResponse'
+        type: array
+      trackingNumber:
+        type: string
+      updatedAt:
         type: string
     type: object
   models.Role:
@@ -1781,6 +1893,88 @@ paths:
       summary: Update Order
       tags:
       - Orders
+  /api/orders/{id}/assign-picker:
+    put:
+      consumes:
+      - application/json
+      description: Assign a picker to an order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Picker assignment details
+        in: body
+        name: picker
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AssignPickerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Assign Picker
+      tags:
+      - Orders
+  /api/orders/{id}/cancel:
+    put:
+      consumes:
+      - application/json
+      description: Cancel an existing order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Cancel Order
+      tags:
+      - Orders
   /api/orders/{id}/duplicate:
     put:
       consumes:
@@ -1817,6 +2011,120 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
       summary: Duplicate Order
+      tags:
+      - Orders
+  /api/orders/{id}/pending-picking:
+    put:
+      consumes:
+      - application/json
+      description: Mark an order as pending picking
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Pending Picking Order
+      tags:
+      - Orders
+  /api/orders/{id}/status/picking-complete:
+    put:
+      consumes:
+      - application/json
+      description: Update the picking complete status of an order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update Picking Complete Status
+      tags:
+      - Orders
+  /api/orders/{id}/status/qc-process:
+    put:
+      consumes:
+      - application/json
+      description: Update the QC process status of an order
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Update QC Process Status
       tags:
       - Orders
   /api/orders/bulk:
@@ -2050,6 +2358,172 @@ paths:
       summary: Update Product
       tags:
       - Products
+  /api/qc-onlines:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of QC Onlines with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of QC Onlines per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for tracking number
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.QCOnlineResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get QC Onlines
+      tags:
+      - QC Onlines
+    post:
+      consumes:
+      - application/json
+      description: Create a new QC Online
+      parameters:
+      - description: QC Online details
+        in: body
+        name: qcOnline
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateQCOnlineRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.QCOnlineResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create QC Online
+      tags:
+      - QC Onlines
+  /api/qc-ribbons:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of QC Ribbons with pagination and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of QC Ribbons per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search term for tracking number
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.QCRibbonResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get QC Ribbons
+      tags:
+      - QC Ribbons
+    post:
+      consumes:
+      - application/json
+      description: Create a new QC Ribbon
+      parameters:
+      - description: QC Ribbon details
+        in: body
+        name: qcRibbon
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateQCRibbonRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.QCRibbonResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Create QC Ribbon
+      tags:
+      - QC Ribbons
   /api/roles:
     get:
       consumes:
