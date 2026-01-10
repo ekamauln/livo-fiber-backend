@@ -235,7 +235,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	orderRoutes.Get("/", orderController.GetOrders)
 	orderRoutes.Get("/:id", orderController.GetOrder)
 	orderRoutes.Put("/:id/status/qc-process", orderController.QCProcessStatusUpdate)
-	orderRoutes.Put("/:id/status/picking-completed", orderController.PickingCompleteStatusUpdate)
+	orderRoutes.Put("/:id/status/picking-completed", orderController.PickingCompletedStatusUpdate)
 
 	// Order router for admin
 	orderRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CreateOrder)
@@ -245,8 +245,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	orderRoutes.Put("/:id/cancel", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin"}), orderController.CancelOrder)
 
 	// Order router for coordinator
-	orderRoutes.Post("/:id/assign-picker", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.AssignPicker)
-	orderRoutes.Post("/:id/pending-picking", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.PendingPickingOrders)
+	orderRoutes.Post("/assign-picker", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.AssignPicker)
+	orderRoutes.Put("/:id/pending-picking", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.PendingPickingOrders)
 	orderRoutes.Get("/assigned", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.GetAssignedOrders)
 
 	// QCRibbon routes

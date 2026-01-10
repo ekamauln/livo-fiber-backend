@@ -1218,13 +1218,13 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Start date (YYYY-MM-DD format)",
-                        "name": "start_date",
+                        "name": "startDate",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "End date (YYYY-MM-DD format)",
-                        "name": "end_date",
+                        "name": "endDate",
                         "in": "query"
                     },
                     {
@@ -1320,6 +1320,154 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders/assign-picker": {
+            "post": {
+                "description": "Assign a picker to an order",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Assign Picker",
+                "parameters": [
+                    {
+                        "description": "Picker assignment details",
+                        "name": "picker",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AssignPickerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Order"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders/assigned": {
+            "get": {
+                "description": "Retrieve orders assigned to a all picker with pagination, date range filtering, and search",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get Assigned Orders",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date for filtering (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date for filtering (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search term for filtering",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.SuccessPaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Order"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -1479,77 +1627,6 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/controllers.UpdateOrderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Order"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/orders/{id}/assign-picker": {
-            "put": {
-                "description": "Assign a picker to an order",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Orders"
-                ],
-                "summary": "Assign Picker",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Order ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Picker assignment details",
-                        "name": "picker",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controllers.AssignPickerRequest"
                         }
                     }
                 ],
@@ -1779,9 +1856,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/orders/{id}/status/picking-complete": {
+        "/api/orders/{id}/status/picking-completed": {
             "put": {
-                "description": "Update the picking complete status of an order",
+                "description": "Update the picking completed status of an order",
                 "consumes": [
                     "application/json"
                 ],
@@ -1791,7 +1868,7 @@ const docTemplate = `{
                 "tags": [
                     "Orders"
                 ],
-                "summary": "Update Picking Complete Status",
+                "summary": "Update Picking Completed Status",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3994,7 +4071,7 @@ const docTemplate = `{
                 "address",
                 "buyer",
                 "channel",
-                "orderDetails",
+                "details",
                 "orderGineeId",
                 "store"
             ],
@@ -4019,7 +4096,7 @@ const docTemplate = `{
                     "maxLength": 100,
                     "minLength": 3
                 },
-                "orderDetails": {
+                "details": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.CreateOrderDetailRequest"
@@ -4435,10 +4512,10 @@ const docTemplate = `{
         "controllers.UpdateOrderRequest": {
             "type": "object",
             "required": [
-                "orderDetails"
+                "details"
             ],
             "properties": {
-                "orderDetails": {
+                "details": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.UpdateOrderDetailRequest"
@@ -4816,6 +4893,12 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.OrderDetailResponse"
+                    }
+                },
                 "duplicatedAt": {
                     "type": "string"
                 },
@@ -4827,12 +4910,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
-                },
-                "orderDetails": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.OrderDetailResponse"
-                    }
                 },
                 "orderGineeId": {
                     "type": "string"

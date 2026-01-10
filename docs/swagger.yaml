@@ -146,7 +146,7 @@ definitions:
         maxLength: 100
         minLength: 3
         type: string
-      orderDetails:
+      details:
         items:
           $ref: '#/definitions/controllers.CreateOrderDetailRequest'
         type: array
@@ -168,7 +168,7 @@ definitions:
     - address
     - buyer
     - channel
-    - orderDetails
+    - details
     - orderGineeId
     - store
     type: object
@@ -453,12 +453,12 @@ definitions:
     type: object
   controllers.UpdateOrderRequest:
     properties:
-      orderDetails:
+      details:
         items:
           $ref: '#/definitions/controllers.UpdateOrderDetailRequest'
         type: array
     required:
-    - orderDetails
+    - details
     type: object
   controllers.UpdatePasswordRequest:
     properties:
@@ -712,6 +712,10 @@ definitions:
         type: string
       createdAt:
         type: string
+      details:
+        items:
+          $ref: '#/definitions/models.OrderDetailResponse'
+        type: array
       duplicatedAt:
         type: string
       duplicatedBy:
@@ -720,10 +724,6 @@ definitions:
         type: string
       id:
         type: integer
-      orderDetails:
-        items:
-          $ref: '#/definitions/models.OrderDetailResponse'
-        type: array
       orderGineeId:
         type: string
       pendingAt:
@@ -1739,11 +1739,11 @@ paths:
         type: integer
       - description: Start date (YYYY-MM-DD format)
         in: query
-        name: start_date
+        name: startDate
         type: string
       - description: End date (YYYY-MM-DD format)
         in: query
-        name: end_date
+        name: endDate
         type: string
       - description: Search term for order ginee id or tracking number
         in: query
@@ -1893,50 +1893,6 @@ paths:
       summary: Update Order
       tags:
       - Orders
-  /api/orders/{id}/assign-picker:
-    put:
-      consumes:
-      - application/json
-      description: Assign a picker to an order
-      parameters:
-      - description: Order ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Picker assignment details
-        in: body
-        name: picker
-        required: true
-        schema:
-          $ref: '#/definitions/controllers.AssignPickerRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.Order'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponse'
-      summary: Assign Picker
-      tags:
-      - Orders
   /api/orders/{id}/cancel:
     put:
       consumes:
@@ -2051,11 +2007,11 @@ paths:
       summary: Pending Picking Order
       tags:
       - Orders
-  /api/orders/{id}/status/picking-complete:
+  /api/orders/{id}/status/picking-completed:
     put:
       consumes:
       - application/json
-      description: Update the picking complete status of an order
+      description: Update the picking completed status of an order
       parameters:
       - description: Order ID
         in: path
@@ -2086,7 +2042,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
-      summary: Update Picking Complete Status
+      summary: Update Picking Completed Status
       tags:
       - Orders
   /api/orders/{id}/status/qc-process:
@@ -2125,6 +2081,99 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
       summary: Update QC Process Status
+      tags:
+      - Orders
+  /api/orders/assign-picker:
+    post:
+      consumes:
+      - application/json
+      description: Assign a picker to an order
+      parameters:
+      - description: Picker assignment details
+        in: body
+        name: picker
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AssignPickerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Assign Picker
+      tags:
+      - Orders
+  /api/orders/assigned:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve orders assigned to a all picker with pagination, date
+        range filtering, and search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Start date for filtering (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date for filtering (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Search term for filtering
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessPaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Order'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Assigned Orders
       tags:
       - Orders
   /api/orders/bulk:

@@ -80,7 +80,7 @@ type OrderResponse struct {
 	CreatedAt        string                `json:"createdAt"`
 	UpdatedAt        string                `json:"updatedAt"`
 	Complained       bool                  `json:"complained"`
-	OrderDetails     []OrderDetailResponse `json:"orderDetails,omitempty"`
+	Details          []OrderDetailResponse `json:"details,omitempty"`
 }
 
 type OrderDetailResponse struct {
@@ -193,6 +193,6 @@ func (o *Order) ToOrderResponse() *OrderResponse {
 		CreatedAt:        o.CreatedAt.Format("02-01-2006 15:04:05"),
 		UpdatedAt:        o.UpdatedAt.Format("02-01-2006 15:04:05"),
 		Complained:       o.Complained,
-		OrderDetails:     details,
+		Details:          details,
 	}
 }
