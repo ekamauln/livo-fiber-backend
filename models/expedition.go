@@ -6,7 +6,7 @@ type Expedition struct {
 	ID              uint      `gorm:"primaryKey" json:"id"`
 	ExpeditionCode  string    `gorm:"uniqueIndex;not null;type:varchar(50)" json:"expedition_code"`
 	ExpeditionName  string    `gorm:"not null;type:varchar(100)" json:"expedition_name"`
-	ExpeditionSlug  string    `gorm:"uniqueIndex;not null;type:varchar(100)" json:"expedition_slug"`
+	ExpeditionSlug  string    `gorm:"index;not null;type:varchar(100)" json:"expedition_slug"`
 	ExpeditionColor string    `gorm:"not null;type:varchar(20)" json:"expedition_color"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
