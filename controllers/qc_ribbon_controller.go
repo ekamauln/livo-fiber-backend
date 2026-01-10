@@ -118,6 +118,36 @@ func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 	})
 }
 
+// GetQCRibbon retrieves a single qc ribbon by ID
+// @Summary Get QC Ribbon
+// @Description Retrieve a single QC Ribbon by ID
+// @Tags QC Ribbons
+// @Accept json
+// @Produce json
+// @Param id path int true "QC Ribbon ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCRibbonResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/qc-ribbons/{id} [get]
+func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var qcRibbon models.QCRibbon
+	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcRibbon).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Ribbon with id " + id + " not found.",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Ribbon retrieved successfully",
+		Data:    qcRibbon.ToResponse(),
+	})
+}
+
 // CreateQCRibbon creates a new QC Ribbon
 // @Summary Create QC Ribbon
 // @Description Create a new QC Ribbon

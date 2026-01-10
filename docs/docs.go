@@ -2350,6 +2350,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/qc-onlines/{id}": {
+            "get": {
+                "description": "Retrieve a single QC Online by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "QC Onlines"
+                ],
+                "summary": "Get QC Online",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "QC Online ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.QCOnlineResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/qc-ribbons": {
             "get": {
                 "description": "Retrieve a list of QC Ribbons with pagination and search",
@@ -2471,6 +2533,68 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/qc-ribbons/{id}": {
+            "get": {
+                "description": "Retrieve a single QC Ribbon by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "QC Ribbons"
+                ],
+                "summary": "Get QC Ribbon",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "QC Ribbon ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.QCRibbonResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -3956,11 +4080,11 @@ const docTemplate = `{
         "controllers.CreateQCOnlineRequest": {
             "type": "object",
             "required": [
-                "qcOnlineDetails",
+                "details",
                 "trackingNumber"
             ],
             "properties": {
-                "qcOnlineDetails": {
+                "details": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.QCOnlineDetailRequest"
@@ -3974,11 +4098,11 @@ const docTemplate = `{
         "controllers.CreateQCRibbonRequest": {
             "type": "object",
             "required": [
-                "qcRibbonDetails",
+                "details",
                 "trackingNumber"
             ],
             "properties": {
-                "qcRibbonDetails": {
+                "details": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.QCRibbonDetailRequest"
@@ -4820,6 +4944,12 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.QCOnlineDetailResponse"
+                    }
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -4828,12 +4958,6 @@ const docTemplate = `{
                 },
                 "qcBy": {
                     "type": "string"
-                },
-                "qcOnlineDetails": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.QCOnlineDetailResponse"
-                    }
                 },
                 "trackingNumber": {
                     "type": "string"
@@ -4863,6 +4987,12 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.QCRibbonDetailResponse"
+                    }
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -4871,12 +5001,6 @@ const docTemplate = `{
                 },
                 "qcBy": {
                     "type": "string"
-                },
-                "qcRibbonDetails": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.QCRibbonDetailResponse"
-                    }
                 },
                 "trackingNumber": {
                     "type": "string"

@@ -252,11 +252,13 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// QCRibbon routes
 	qcRibbonRoutes := protected.Group("/qc-ribbons")
 	qcRibbonRoutes.Get("/", qcRibbonController.GetQCRibbons)
+	qcRibbonRoutes.Get("/:id", qcRibbonController.GetQCRibbon)
 	qcRibbonRoutes.Post("/", qcRibbonController.CreateQCRibbon)
 
 	// QCOnline routes
 	qcOnlineRoutes := protected.Group("/qc-onlines")
 	qcOnlineRoutes.Get("/", qcOnlineController.GetQCOnlines)
+	qcOnlineRoutes.Get("/:id", qcOnlineController.GetQCOnline)
 	qcOnlineRoutes.Post("/", qcOnlineController.CreateQCOnline)
 
 	// Outbound routes

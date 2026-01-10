@@ -198,26 +198,26 @@ definitions:
     type: object
   controllers.CreateQCOnlineRequest:
     properties:
-      qcOnlineDetails:
+      details:
         items:
           $ref: '#/definitions/controllers.QCOnlineDetailRequest'
         type: array
       trackingNumber:
         type: string
     required:
-    - qcOnlineDetails
+    - details
     - trackingNumber
     type: object
   controllers.CreateQCRibbonRequest:
     properties:
-      qcRibbonDetails:
+      details:
         items:
           $ref: '#/definitions/controllers.QCRibbonDetailRequest'
         type: array
       trackingNumber:
         type: string
     required:
-    - qcRibbonDetails
+    - details
     - trackingNumber
     type: object
   controllers.CreateRoleRequest:
@@ -796,16 +796,16 @@ definitions:
         type: boolean
       createdAt:
         type: string
+      details:
+        items:
+          $ref: '#/definitions/models.QCOnlineDetailResponse'
+        type: array
       id:
         type: integer
       order:
         $ref: '#/definitions/models.OrderResponse'
       qcBy:
         type: string
-      qcOnlineDetails:
-        items:
-          $ref: '#/definitions/models.QCOnlineDetailResponse'
-        type: array
       trackingNumber:
         type: string
       updatedAt:
@@ -824,16 +824,16 @@ definitions:
         type: boolean
       createdAt:
         type: string
+      details:
+        items:
+          $ref: '#/definitions/models.QCRibbonDetailResponse'
+        type: array
       id:
         type: integer
       order:
         $ref: '#/definitions/models.OrderResponse'
       qcBy:
         type: string
-      qcRibbonDetails:
-        items:
-          $ref: '#/definitions/models.QCRibbonDetailResponse'
-        type: array
       trackingNumber:
         type: string
       updatedAt:
@@ -2441,6 +2441,44 @@ paths:
       summary: Create QC Online
       tags:
       - QC Onlines
+  /api/qc-onlines/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single QC Online by ID
+      parameters:
+      - description: QC Online ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.QCOnlineResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get QC Online
+      tags:
+      - QC Onlines
   /api/qc-ribbons:
     get:
       consumes:
@@ -2522,6 +2560,44 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
       summary: Create QC Ribbon
+      tags:
+      - QC Ribbons
+  /api/qc-ribbons/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single QC Ribbon by ID
+      parameters:
+      - description: QC Ribbon ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.QCRibbonResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get QC Ribbon
       tags:
       - QC Ribbons
   /api/roles:

@@ -118,6 +118,36 @@ func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 	})
 }
 
+// GetQCOnline retrieves a single qc online by ID
+// @Summary Get QC Online
+// @Description Retrieve a single QC Online by ID
+// @Tags QC Onlines
+// @Accept json
+// @Produce json
+// @Param id path int true "QC Online ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCOnlineResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/qc-onlines/{id} [get]
+func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var qcOnline models.QCOnline
+	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcOnline).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Online with id " + id + " not found.",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Online retrieved successfully",
+		Data:    qcOnline.ToResponse(),
+	})
+}
+
 // CreateQCOnline creates a new QC Online
 // @Summary Create QC Online
 // @Description Create a new QC Online
