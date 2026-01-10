@@ -19,14 +19,16 @@ type Outbound struct {
 
 // OutboundResponse represents the outbound data returned in API responses
 type OutboundResponse struct {
-	ID             uint           `json:"id"`
-	TrackingNumber string         `json:"trackingNumber"`
-	OutboundBy     string         `json:"outboundBy"`
-	Expedition     string         `json:"expedition"`
-	CreatedAt      string         `json:"createdAt"`
-	UpdatedAt      string         `json:"updatedAt"`
-	Complained     bool           `json:"complained"`
-	Order          *OrderResponse `json:"order,omitempty"`
+	ID              uint           `json:"id"`
+	TrackingNumber  string         `json:"trackingNumber"`
+	OutboundBy      string         `json:"outboundBy"`
+	Expedition      string         `json:"expedition"`
+	ExpeditionSlug  string         `json:"expeditionSlug"`
+	ExpeditionColor string         `json:"expeditionColor"`
+	CreatedAt       string         `json:"createdAt"`
+	UpdatedAt       string         `json:"updatedAt"`
+	Complained      bool           `json:"complained"`
+	Order           *OrderResponse `json:"order,omitempty"`
 }
 
 // ToResponse converts an Outbound model to an OutboundResponse
@@ -44,13 +46,15 @@ func (o *Outbound) ToResponse() *OutboundResponse {
 	}
 
 	return &OutboundResponse{
-		ID:             o.ID,
-		TrackingNumber: o.TrackingNumber,
-		OutboundBy:     outboundBy,
-		Expedition:     o.Expedition,
-		CreatedAt:      o.CreatedAt.Format("02-01-2006 15:04:05"),
-		UpdatedAt:      o.UpdatedAt.Format("02-01-2006 15:04:05"),
-		Complained:     o.Complained,
-		Order:          orderResponse,
+		ID:              o.ID,
+		TrackingNumber:  o.TrackingNumber,
+		OutboundBy:      outboundBy,
+		Expedition:      o.Expedition,
+		ExpeditionSlug:  o.ExpeditionSlug,
+		ExpeditionColor: o.ExpeditionColor,
+		CreatedAt:       o.CreatedAt.Format("02-01-2006 15:04:05"),
+		UpdatedAt:       o.UpdatedAt.Format("02-01-2006 15:04:05"),
+		Complained:      o.Complained,
+		Order:           orderResponse,
 	}
 }

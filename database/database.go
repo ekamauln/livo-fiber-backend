@@ -307,8 +307,8 @@ func SeedInitialExpedition() error {
 			expedition := models.Expedition{
 				ExpeditionCode:  expeditionData.ExpeditionCode,
 				ExpeditionName:  expeditionData.ExpeditionName,
-				ExpeditionSlug:  expeditionData.ExpeditionCode,
-				ExpeditionColor: expeditionData.ExpeditionCode,
+				ExpeditionSlug:  expeditionData.ExpeditionSlug,
+				ExpeditionColor: expeditionData.ExpeditionColor,
 			}
 
 			if err := DB.Create(&expedition).Error; err != nil {

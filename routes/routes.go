@@ -24,7 +24,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	orderController := controllers.NewOrderController(db)
 	qcRibbonController := controllers.NewQCRibbonController(db)
 	qcOnlineController := controllers.NewQCOnlineController(db)
-	// outboundController := controllers.NewOutboundController()
+	outboundController := controllers.NewOutboundController(db)
 	// reportController := controllers.NewReportController()
 	// returnController := controllers.NewReturnController()
 	// complainController := controllers.NewComplainController()
@@ -262,9 +262,10 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	qcOnlineRoutes.Post("/", qcOnlineController.CreateQCOnline)
 
 	// Outbound routes
-	// outboundRoutes := protected.Group("/outbounds")
-	// outboundRoutes.Get("/", outboundController.GetOutbounds)
-	// outboundRoutes.Post("/", outboundController.CreateOutbound)
-	// outboundRoutes.Put("/:id", outboundController.UpdateOutbound)
+	outboundRoutes := protected.Group("/outbounds")
+	outboundRoutes.Get("/", outboundController.GetOutbounds)
+	outboundRoutes.Get("/:id", outboundController.GetOutbound)
+	outboundRoutes.Post("/", outboundController.CreateOutbound)
+	outboundRoutes.Put("/:id", outboundController.UpdateOutbound)
 
 }
