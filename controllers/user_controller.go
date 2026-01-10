@@ -280,6 +280,14 @@ func (uc *UserController) CreateUser(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload the data
+	if err := uc.DB.Preload("Roles").Where("id = ?", newUser.ID).First(&newUser).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to load user",
+		})
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User created successfully",
@@ -362,10 +370,19 @@ func (uc *UserController) UpdateUser(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload the data with fresh query
+	var reloadedUser models.User
+	if err := uc.DB.Preload("Roles").Where("id = ?", user.ID).First(&reloadedUser).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to load user",
+		})
+	}
+
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User updated successfully",
-		Data:    user.ToResponse(),
+		Data:    reloadedUser.ToResponse(),
 	})
 }
 
@@ -571,10 +588,19 @@ func (uc *UserController) AssignRole(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload the data with fresh query
+	var reloadedUser models.User
+	if err := uc.DB.Preload("Roles").Where("id = ?", user.ID).First(&reloadedUser).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to load user",
+		})
+	}
+
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role assigned to user successfully",
-		Data:    user.ToResponse(),
+		Data:    reloadedUser.ToResponse(),
 	})
 }
 
@@ -657,10 +683,19 @@ func (uc *UserController) RemoveRole(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload the data with fresh query
+	var reloadedUser models.User
+	if err := uc.DB.Preload("Roles").Where("id = ?", user.ID).First(&reloadedUser).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to load user",
+		})
+	}
+
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role removed from user successfully",
-		Data:    user.ToResponse(),
+		Data:    reloadedUser.ToResponse(),
 	})
 }
 
