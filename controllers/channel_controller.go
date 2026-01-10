@@ -120,7 +120,7 @@ func (bc *ChannelController) GetChannel(c fiber.Ctx) error {
 	id := c.Params("id")
 	var channel models.Channel
 	if err := bc.DB.Where("id = ?", id).First(&channel).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Channel with id " + id + " not found.",
 		})

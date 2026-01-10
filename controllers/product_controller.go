@@ -126,7 +126,7 @@ func (pc *ProductController) GetProduct(c fiber.Ctx) error {
 	id := c.Params("id")
 	var product models.Product
 	if err := pc.DB.Where("id = ?", id).First(&product).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Product with id " + id + " not found.",
 		})

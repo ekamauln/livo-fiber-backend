@@ -122,7 +122,7 @@ func (bc *ExpeditionController) GetExpedition(c fiber.Ctx) error {
 	id := c.Params("id")
 	var expedition models.Expedition
 	if err := bc.DB.Where("id = ?", id).First(&expedition).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Expedition with id " + id + " not found.",
 		})

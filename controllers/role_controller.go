@@ -104,7 +104,7 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 	})
 }
 
-// GetUser retrieves a single role by ID
+// GetRole retrieves a single role by ID
 // @Summary Get Role
 // @Description Retrieve a single role by ID
 // @Tags Roles

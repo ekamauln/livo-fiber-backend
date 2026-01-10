@@ -120,7 +120,7 @@ func (bc *BoxController) GetBox(c fiber.Ctx) error {
 	id := c.Params("id")
 	var box models.Box
 	if err := bc.DB.Where("id = ?", id).First(&box).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Box with id " + id + " not found.",
 		})

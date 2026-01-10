@@ -120,7 +120,7 @@ func (bc *StoreController) GetStore(c fiber.Ctx) error {
 	id := c.Params("id")
 	var store models.Store
 	if err := bc.DB.Where("id = ?", id).First(&store).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Store with id " + id + " not found.",
 		})
