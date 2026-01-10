@@ -89,6 +89,14 @@ func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 		})
 	}
 
+	// Load orders for each QC Ribbon by tracking number
+	for i := range qcRibbons {
+		var order models.Order
+		if err := qcrc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcRibbons[i].TrackingNumber).First(&order).Error; err == nil {
+			qcRibbons[i].Order = &order
+		}
+	}
+
 	// Format response
 	qcRibbonList := make([]models.QCRibbonResponse, len(qcRibbons))
 	for i, qcRibbon := range qcRibbons {
@@ -143,6 +151,12 @@ func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 			Success: false,
 			Error:   "QC Ribbon with id " + id + " not found.",
 		})
+	}
+
+	// Load order by tracking number
+	var order models.Order
+	if err := qcrc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcRibbon.TrackingNumber).First(&order).Error; err == nil {
+		qcRibbon.Order = &order
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
@@ -309,6 +323,12 @@ func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 			Success: false,
 			Error:   "Failed to load created QC ribbon",
 		})
+	}
+
+	// Load order by tracking number
+	var orderResponse models.Order
+	if err := qcrc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcRibbon.TrackingNumber).First(&orderResponse).Error; err == nil {
+		qcRibbon.Order = &orderResponse
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{

@@ -89,6 +89,14 @@ func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 		})
 	}
 
+	// Load orders for each QC Online by tracking number
+	for i := range qcOnlines {
+		var order models.Order
+		if err := qcoc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcOnlines[i].TrackingNumber).First(&order).Error; err == nil {
+			qcOnlines[i].Order = &order
+		}
+	}
+
 	// Format response
 	qcOnlineList := make([]models.QCOnlineResponse, len(qcOnlines))
 	for i, qcOnline := range qcOnlines {
@@ -143,6 +151,12 @@ func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 			Success: false,
 			Error:   "QC Online with id " + id + " not found.",
 		})
+	}
+
+	// Load order by tracking number
+	var order models.Order
+	if err := qcoc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcOnline.TrackingNumber).First(&order).Error; err == nil {
+		qcOnline.Order = &order
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
@@ -309,6 +323,12 @@ func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
 			Success: false,
 			Error:   "Failed to load created QC online",
 		})
+	}
+
+	// Load order by tracking number
+	var orderResponse models.Order
+	if err := qcoc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcOnline.TrackingNumber).First(&orderResponse).Error; err == nil {
+		qcOnline.Order = &orderResponse
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
