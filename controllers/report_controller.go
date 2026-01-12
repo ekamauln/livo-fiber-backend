@@ -148,7 +148,7 @@ func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate 
 // @Security BearerAuth
 // @Param startDate query string false "Filter by start date (YYYY-MM-DD format)"
 // @Param endDate query string false "Filter by end date (YYYY-MM-DD format)"
-// @Param search query string false "Search term for box code or box name"
+// @Param boxName query string false "Filter term for box name"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]BoxCountReportsListResponse}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
@@ -158,7 +158,7 @@ func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
 	// Parse query parameters
 	startDate := c.Query("startDate", "")
 	endDate := c.Query("endDate", "")
-	search := c.Query("search", "")
+	boxName := c.Query("boxName", "")
 
 	// Build subquery for ribbon counts
 	ribbonCountSubquery := rc.DB.Table("qc_ribbon_details").
@@ -206,9 +206,9 @@ func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
 		Joins("LEFT JOIN (?) as ribbon ON ribbon.box_id = boxes.id", ribbonCountSubquery).
 		Joins("LEFT JOIN (?) as online ON online.box_id = boxes.id", onlineCountSubquery)
 
-	// Apply search filter
-	if search != "" {
-		query = query.Where("boxes.box_code ILIKE ? OR boxes.box_name ILIKE ?", "%"+search+"%", "%"+search+"%")
+	// Apply filter by box name with exact match
+	if boxName != "" {
+		query = query.Where("boxes.box_name = ?", boxName)
 	}
 
 	// Group by boxes columns
@@ -265,17 +265,18 @@ func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
 		filters = append(filters, "date: "+strings.Join(dateRange, ", "))
 	}
 
-	if search != "" {
-		filters = append(filters, "search: "+search)
+	if boxName != "" {
+		filters = append(filters, "boxName: "+boxName)
 	}
 
 	if len(filters) > 0 {
 		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
 	}
 
-	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,
 		Data:    response,
+		Total:   int64(len(reports)),
 	})
 }

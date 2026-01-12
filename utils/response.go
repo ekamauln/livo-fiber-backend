@@ -9,6 +9,14 @@ type Pagination struct {
 	Limit int   `json:"limit"`
 }
 
+// SuccessTotaledResponse represents a success response with total count
+type SuccessTotaledResponse struct {
+	Success bool        `json:"success"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+	Total   int64       `json:"total"`
+}
+
 // SuccessResponse represents a generic success response
 type SuccessResponse struct {
 	Success bool        `json:"success"`
