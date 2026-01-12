@@ -27,7 +27,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	outboundController := controllers.NewOutboundController(db)
 	ribbonFlowController := controllers.NewRibbonFlowController(db)
 	onlineFlowController := controllers.NewOnlineFlowController(db)
-	// reportController := controllers.NewReportController()
+	reportController := controllers.NewReportController(db)
 	// returnController := controllers.NewReturnController()
 	// complainController := controllers.NewComplainController()
 
@@ -277,5 +277,9 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	outboundRoutes.Get("/:id", outboundController.GetOutbound)
 	outboundRoutes.Post("/", outboundController.CreateOutbound)
 	outboundRoutes.Put("/:id", outboundController.UpdateOutbound)
+
+	// Report routes
+	reportRoutes := protected.Group("/reports")
+	reportRoutes.Get("/boxes", reportController.GetBoxReports)
 
 }

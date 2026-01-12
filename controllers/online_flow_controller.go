@@ -27,15 +27,15 @@ type OnlineUserFlowInfo struct {
 }
 
 type QcOnlineFlowInfo struct {
-	User      *OnlineUserFlowInfo `json:"qcBy,omitempty"`
-	CreatedAt string              `json:"createdAt"`
+	QcBy      string `json:"qcBy,omitempty"`
+	CreatedAt string `json:"createdAt"`
 }
 
 type OnlineOutboundFlowInfo struct {
-	User            *OnlineUserFlowInfo `json:"outboundBy,omitempty"`
-	Expedition      string              `json:"expedition"`
-	ExpeditionColor string              `json:"expeditionColor"`
-	CreatedAt       string              `json:"createdAt"`
+	OutboundBy      string `json:"outboundBy,omitempty"`
+	Expedition      string `json:"expedition"`
+	ExpeditionColor string `json:"expeditionColor"`
+	CreatedAt       string `json:"createdAt"`
 }
 
 type OnlineOrderFlowInfo struct {
@@ -77,16 +77,13 @@ func (ofc *OnlineFlowController) BuildOnlineFlow(trackingNumber string) OnlineFl
 	// 1. Query QC Online (Primary Table)
 	var qcOnline models.QCOnline
 	if err := ofc.DB.Preload("QCOnlineDetails").Preload("QCUser").Where("tracking_number = ?", trackingNumber).First(&qcOnline).Error; err == nil {
-		var user *OnlineUserFlowInfo
+		qcBy := ""
 		if qcOnline.QCUser != nil {
-			user = &OnlineUserFlowInfo{
-				Username: qcOnline.QCUser.Username,
-				FullName: qcOnline.QCUser.FullName,
-			}
+			qcBy = qcOnline.QCUser.FullName
 		}
 
 		response.QCOnline = &QcOnlineFlowInfo{
-			User:      user,
+			QcBy:      qcBy,
 			CreatedAt: qcOnline.CreatedAt.Format("02-01-2006 15:04:05"),
 		}
 	}
@@ -94,16 +91,13 @@ func (ofc *OnlineFlowController) BuildOnlineFlow(trackingNumber string) OnlineFl
 	// 2. Query Outbound table
 	var outbound models.Outbound
 	if err := ofc.DB.Preload("OutboundUser").Where("tracking_number = ?", trackingNumber).First(&outbound).Error; err == nil {
-		var user *OnlineUserFlowInfo
+		outboundBy := ""
 		if outbound.OutboundUser != nil {
-			user = &OnlineUserFlowInfo{
-				Username: outbound.OutboundUser.Username,
-				FullName: outbound.OutboundUser.FullName,
-			}
+			outboundBy = outbound.OutboundUser.FullName
 		}
 
 		response.Outbound = &OnlineOutboundFlowInfo{
-			User:            user,
+			OutboundBy:      outboundBy,
 			Expedition:      outbound.Expedition,
 			ExpeditionColor: outbound.ExpeditionColor,
 			CreatedAt:       outbound.CreatedAt.Format("02-01-2006 15:04:05"),
@@ -195,7 +189,7 @@ func (ofc *OnlineFlowController) BuildOnlineFlow(trackingNumber string) OnlineFl
 // GetOnlineFlows retrieves all online flows with their associated QC Online, Outbound, and Order details (with pagination and search)
 // @Summary Get all online flows
 // @Description Retrieve all online flows with their associated QC Online, Outbound, and Order details (with pagination and search)
-// @Tags Onlines
+// @Tags Online
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -208,8 +202,8 @@ func (ofc *OnlineFlowController) BuildOnlineFlow(trackingNumber string) OnlineFl
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/onlines/flows [get]
-func (rfc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
+// @Router /api/online/flows [get]
+func (ofc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -218,7 +212,7 @@ func (rfc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 	var qcOnlines []models.QCOnline
 
 	// Build base query
-	query := rfc.DB.Preload("QCOnlineDetails").Preload("QCUser").Model(&models.QCOnline{}).Order("created_at DESC")
+	query := ofc.DB.Preload("QCOnlineDetails").Preload("QCUser").Model(&models.QCOnline{}).Order("created_at DESC")
 
 	// Date range filter if provided
 	startDate := c.Query("startDate", "")
@@ -269,7 +263,7 @@ func (rfc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 	// Format response
 	var onlineFlows []OnlineFlowResponse
 	for _, qcOnline := range qcOnlines {
-		flow := rfc.BuildOnlineFlow(qcOnline.TrackingNumber)
+		flow := ofc.BuildOnlineFlow(qcOnline.TrackingNumber)
 		onlineFlows = append(onlineFlows, flow)
 	}
 
@@ -315,7 +309,7 @@ func (rfc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 // GetOnlineFlow retrieves a single online flow by tracking number
 // @Summary Get a single online flow
 // @Description Retrieve a single online flow by tracking number
-// @Tags Onlines
+// @Tags Online
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -326,8 +320,8 @@ func (rfc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 // @Failure 403 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/onlines/flows/{trackingNumber} [get]
-func (rfc *OnlineFlowController) GetOnlineFlow(c fiber.Ctx) error {
+// @Router /api/online/flows/{trackingNumber} [get]
+func (ofc *OnlineFlowController) GetOnlineFlow(c fiber.Ctx) error {
 	trackingNumber := c.Params("trackingNumber")
 
 	if trackingNumber == "" {
@@ -337,7 +331,7 @@ func (rfc *OnlineFlowController) GetOnlineFlow(c fiber.Ctx) error {
 		})
 	}
 
-	flow := rfc.BuildOnlineFlow(trackingNumber)
+	flow := ofc.BuildOnlineFlow(trackingNumber)
 
 	// Check if qc-online exists
 	if flow.QCOnline == nil {

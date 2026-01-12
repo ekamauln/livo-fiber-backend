@@ -27,15 +27,15 @@ type RibbonUserFlowInfo struct {
 }
 
 type QcRibbonFlowInfo struct {
-	User      *RibbonUserFlowInfo `json:"qcBy,omitempty"`
-	CreatedAt string              `json:"createdAt"`
+	QcBy      string `json:"qcBy,omitempty"`
+	CreatedAt string `json:"createdAt"`
 }
 
 type RibbonOutboundFlowInfo struct {
-	User            *RibbonUserFlowInfo `json:"outboundBy,omitempty"`
-	Expedition      string              `json:"expedition"`
-	ExpeditionColor string              `json:"expeditionColor"`
-	CreatedAt       string              `json:"createdAt"`
+	OutboundBy      string `json:"outboundBy,omitempty"`
+	Expedition      string `json:"expedition"`
+	ExpeditionColor string `json:"expeditionColor"`
+	CreatedAt       string `json:"createdAt"`
 }
 
 type RibbonOrderFlowInfo struct {
@@ -77,16 +77,13 @@ func (rfc *RibbonFlowController) BuildRibbonFlow(trackingNumber string) RibbonFl
 	// 1. Query QC Ribbon (Primary Table)
 	var qcRibbon models.QCRibbon
 	if err := rfc.DB.Preload("QCRibbonDetails").Preload("QCUser").Where("tracking_number = ?", trackingNumber).First(&qcRibbon).Error; err == nil {
-		var user *RibbonUserFlowInfo
+		qcBy := ""
 		if qcRibbon.QCUser != nil {
-			user = &RibbonUserFlowInfo{
-				Username: qcRibbon.QCUser.Username,
-				FullName: qcRibbon.QCUser.FullName,
-			}
+			qcBy = qcRibbon.QCUser.FullName
 		}
 
 		response.QCRibbon = &QcRibbonFlowInfo{
-			User:      user,
+			QcBy:      qcBy,
 			CreatedAt: qcRibbon.CreatedAt.Format("02-01-2006 15:04:05"),
 		}
 	}
@@ -94,16 +91,13 @@ func (rfc *RibbonFlowController) BuildRibbonFlow(trackingNumber string) RibbonFl
 	// 2. Query Outbound table
 	var outbound models.Outbound
 	if err := rfc.DB.Preload("OutboundUser").Where("tracking_number = ?", trackingNumber).First(&outbound).Error; err == nil {
-		var user *RibbonUserFlowInfo
+		outboundBy := ""
 		if outbound.OutboundUser != nil {
-			user = &RibbonUserFlowInfo{
-				Username: outbound.OutboundUser.Username,
-				FullName: outbound.OutboundUser.FullName,
-			}
+			outboundBy = outbound.OutboundUser.FullName
 		}
 
 		response.Outbound = &RibbonOutboundFlowInfo{
-			User:            user,
+			OutboundBy:      outboundBy,
 			Expedition:      outbound.Expedition,
 			ExpeditionColor: outbound.ExpeditionColor,
 			CreatedAt:       outbound.CreatedAt.Format("02-01-2006 15:04:05"),
