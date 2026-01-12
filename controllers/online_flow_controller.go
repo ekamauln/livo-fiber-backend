@@ -67,7 +67,6 @@ type OnlineFlowResponse struct {
 
 type OnlineFlowsListResponse struct {
 	OnlineFlows []OnlineFlowResponse `json:"onlineFlows"`
-	Pagination  utils.Pagination     `json:"pagination"`
 }
 
 // Helper function to build OnlineFlowResponse for a given tracking number
@@ -201,7 +200,7 @@ func (ofc *OnlineFlowController) BuildOnlineFlow(trackingNumber string) OnlineFl
 // @Produce json
 // @Security BearerAuth
 // @Param page query int false "Page number for pagination" default(1)
-// @Param page_size query int false "Number of items per page" default(10)
+// @Param limit query int false "Number of items per page" default(10)
 // @Param startDate query string false "Filter by start date (YYYY-MM-DD format)"
 // @Param endDate query string false "Filter by end date (YYYY-MM-DD format)"
 // @Param search query string false "Search term for tracking number"
@@ -276,11 +275,6 @@ func (rfc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 
 	response := OnlineFlowsListResponse{
 		OnlineFlows: onlineFlows,
-		Pagination: utils.Pagination{
-			Page:  page,
-			Limit: limit,
-			Total: total,
-		},
 	}
 
 	// Build success message with all filters
