@@ -19,7 +19,7 @@ type QCOnlineDetail struct {
 	ID         uint `gorm:"primaryKey" json:"id"`
 	QCOnlineID uint `gorm:"not null" json:"qc_online_id"`
 	BoxID      uint `gorm:"not null" json:"box_id"`
-	Quantity   uint `gorm:"not null" json:"quantity"`
+	Quantity   int  `gorm:"not null" json:"quantity"`
 
 	Box      *Box      `gorm:"foreignKey:BoxID" json:"box,omitempty"`
 	QCOnline *QCOnline `gorm:"foreignKey:QCOnlineID" json:"-"`
@@ -39,7 +39,7 @@ type QCOnlineResponse struct {
 
 type QCOnlineDetailResponse struct {
 	Box      string `json:"box,omitempty"`
-	Quantity uint   `json:"quantity"`
+	Quantity int    `json:"quantity"`
 }
 
 // ToResponse converts a QCOnline model to a QCOnlineResponse

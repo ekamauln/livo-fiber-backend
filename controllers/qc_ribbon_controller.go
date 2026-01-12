@@ -29,7 +29,7 @@ type CreateQCRibbonRequest struct {
 
 type QCRibbonDetailRequest struct {
 	BoxID    uint `json:"boxId" validate:"required"`
-	Quantity uint `json:"quantity" validate:"required,min=1"`
+	Quantity int  `json:"quantity" validate:"required,min=1"`
 }
 
 // GetQCRibbons retrieves a list of qc ribbons with pagination and search

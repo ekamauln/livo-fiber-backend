@@ -19,7 +19,7 @@ type QCRibbonDetail struct {
 	ID         uint `gorm:"primaryKey" json:"id"`
 	QCRibbonID uint `gorm:"not null" json:"qc_ribbon_id"`
 	BoxID      uint `gorm:"not null" json:"box_id"`
-	Quantity   uint `gorm:"not null" json:"quantity"`
+	Quantity   int  `gorm:"not null" json:"quantity"`
 
 	Box      *Box      `gorm:"foreignKey:BoxID" json:"box,omitempty"`
 	QCRibbon *QCRibbon `gorm:"foreignKey:QCRibbonID" json:"-"`
@@ -39,7 +39,7 @@ type QCRibbonResponse struct {
 
 type QCRibbonDetailResponse struct {
 	Box      string `json:"box,omitempty"`
-	Quantity uint   `json:"quantity"`
+	Quantity int    `json:"quantity"`
 }
 
 // ToResponse converts a QCRibbon model to a QCRibbonResponse

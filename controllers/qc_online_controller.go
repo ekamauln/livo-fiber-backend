@@ -29,7 +29,7 @@ type CreateQCOnlineRequest struct {
 
 type QCOnlineDetailRequest struct {
 	BoxID    uint `json:"boxId" validate:"required"`
-	Quantity uint `json:"quantity" validate:"required,min=1"`
+	Quantity int  `json:"quantity" validate:"required,min=1"`
 }
 
 // GetQCOnlines retrieves a list of qc onlines with pagination and search

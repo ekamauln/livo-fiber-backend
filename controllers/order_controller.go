@@ -37,8 +37,8 @@ type CreateOrderDetailRequest struct {
 	SKU         string `json:"sku" validate:"required,min=1,max=255"`
 	ProductName string `json:"productName" validate:"required,min=1,max=255"`
 	Variant     string `json:"variant" validate:"omitempty,min=1,max=100"`
-	Quantity    uint   `json:"quantity" validate:"required,gt=0"`
-	Price       uint   `json:"price" validate:"required,gt=0"`
+	Quantity    int    `json:"quantity" validate:"required,gt=0"`
+	Price       int    `json:"price" validate:"required,gt=0"`
 }
 
 type BulkCreateOrdersRequest struct {
@@ -53,8 +53,8 @@ type UpdateOrderDetailRequest struct {
 	SKU         string `json:"sku" validate:"required,min=1,max=255"`
 	ProductName string `json:"productName" validate:"required,min=1,max=255"`
 	Variant     string `json:"variant" validate:"omitempty,min=1,max=100"`
-	Quantity    uint   `json:"quantity" validate:"required,gt=0"`
-	Price       uint   `json:"price" validate:"required,gt=0"`
+	Quantity    int    `json:"quantity" validate:"required,gt=0"`
+	Price       int    `json:"price" validate:"required,gt=0"`
 }
 
 type UpdateProcessingStatusRequest struct {
@@ -86,14 +86,14 @@ type BulkCreateSummary struct {
 }
 
 type SkippedOrder struct {
-	Index          uint   `json:"index"`
+	Index          int    `json:"index"`
 	OrderGineeID   string `json:"orderGineeId"`
 	TrackingNumber string `json:"trackingNumber"`
 	Reason         string `json:"reason"`
 }
 
 type FailedOrder struct {
-	Index          uint   `json:"index"`
+	Index          int    `json:"index"`
 	OrderGineeID   string `json:"orderGineeId"`
 	TrackingNumber string `json:"trackingNumber"`
 	Error          string `json:"error"`
@@ -341,7 +341,6 @@ func (oc *OrderController) CreateOrder(c fiber.Ctx) error {
 	// Create order details
 	for _, detail := range req.Details {
 		orderDetail := models.OrderDetail{
-			OrderID:     newOrder.ID,
 			SKU:         detail.SKU,
 			ProductName: detail.ProductName,
 			Variant:     detail.Variant,
@@ -422,7 +421,7 @@ func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
 		if err := oc.DB.Where("order_ginee_id = ? OR tracking_number = ?", orderReq.OrderGineeID, orderReq.TrackingNumber).First(&existingOrder).Error; err == nil {
 			// If order already exists, skip it
 			skippedOrders = append(skippedOrders, SkippedOrder{
-				Index:          uint(i),
+				Index:          i,
 				OrderGineeID:   orderReq.OrderGineeID,
 				TrackingNumber: orderReq.TrackingNumber,
 				Reason:         "Order already exists",
@@ -448,7 +447,7 @@ func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
 			} else {
 				// Failed to parse date
 				failedOrders = append(failedOrders, FailedOrder{
-					Index:        uint(i),
+					Index:        i,
 					OrderGineeID: orderReq.OrderGineeID,
 					Error:        "Invalid sentBefore format: " + err.Error(),
 				})
@@ -474,7 +473,7 @@ func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
 			tx.Rollback()
 			// Failed to create order
 			failedOrders = append(failedOrders, FailedOrder{
-				Index:        uint(i),
+				Index:        i,
 				OrderGineeID: orderReq.OrderGineeID,
 				Error:        err.Error(),
 			})
@@ -627,7 +626,6 @@ func (oc *OrderController) UpdateOrder(c fiber.Ctx) error {
 		newDetails := make([]models.OrderDetail, 0, len(req.Details))
 		for _, detailReq := range req.Details {
 			detail := models.OrderDetail{
-				OrderID:     order.ID,
 				SKU:         detailReq.SKU,
 				ProductName: detailReq.ProductName,
 				Variant:     detailReq.Variant,

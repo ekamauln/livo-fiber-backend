@@ -45,8 +45,8 @@ type OrderDetail struct {
 	SKU         string `gorm:"not null;type:varchar(255)" json:"sku"`
 	ProductName string `gorm:"not null;type:varchar(255)" json:"product_name"`
 	Variant     string `gorm:"type:varchar(100)" json:"variant"`
-	Quantity    uint   `gorm:"not null" json:"quantity"`
-	Price       uint   `gorm:"not null" json:"price"`
+	Quantity    int    `gorm:"not null" json:"quantity"`
+	Price       int    `gorm:"not null" json:"price"`
 
 	Order   *Order   `gorm:"foreignKey:OrderID" json:"-"`
 	Product *Product `gorm:"-" json:"product,omitempty"`
@@ -87,8 +87,8 @@ type OrderDetailResponse struct {
 	SKU         string `json:"sku"`
 	ProductName string `json:"productName"`
 	Variant     string `json:"variant"`
-	Quantity    uint   `json:"quantity"`
-	Price       uint   `json:"price"`
+	Quantity    int    `json:"quantity"`
+	Price       int    `json:"price"`
 
 	Product *ProductResponse `json:"product,omitempty"`
 }
