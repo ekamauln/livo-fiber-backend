@@ -25,6 +25,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	qcRibbonController := controllers.NewQCRibbonController(db)
 	qcOnlineController := controllers.NewQCOnlineController(db)
 	outboundController := controllers.NewOutboundController(db)
+	ribbonFlowController := controllers.NewRibbonFlowController(db)
+	onlineFlowController := controllers.NewOnlineFlowController(db)
 	// reportController := controllers.NewReportController()
 	// returnController := controllers.NewReturnController()
 	// complainController := controllers.NewComplainController()
@@ -226,8 +228,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	productRoutes := protected.Group("/products")
 	productRoutes.Get("/", productController.GetProducts)
 	productRoutes.Get("/:id", productController.GetProduct)
-	productRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.CreateProduct)
-	productRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), productController.UpdateProduct)
+	productRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin", "warehouse"}), productController.CreateProduct)
+	productRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "admin", "warehouse"}), productController.UpdateProduct)
 	productRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), productController.DeleteProduct)
 
 	// Order routes
@@ -249,17 +251,25 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	orderRoutes.Put("/:id/pending-picking", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.PendingPickingOrders)
 	orderRoutes.Get("/assigned", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), orderController.GetAssignedOrders)
 
-	// QCRibbon routes
-	qcRibbonRoutes := protected.Group("/qc-ribbons")
-	qcRibbonRoutes.Get("/", qcRibbonController.GetQCRibbons)
-	qcRibbonRoutes.Get("/:id", qcRibbonController.GetQCRibbon)
-	qcRibbonRoutes.Post("/", qcRibbonController.CreateQCRibbon)
+	// Ribbon routes
+	qcRibbonRoutes := protected.Group("/ribbons")
+	// QC ribbon routes
+	qcRibbonRoutes.Get("/qc-ribbons", qcRibbonController.GetQCRibbons)
+	qcRibbonRoutes.Get("/qc-ribbons/:id", qcRibbonController.GetQCRibbon)
+	qcRibbonRoutes.Post("/qc-ribbons", qcRibbonController.CreateQCRibbon)
+	// Ribbon flow routes
+	qcRibbonRoutes.Get("/flows", ribbonFlowController.GetRibbonFlows)
+	qcRibbonRoutes.Get("/flows/:trackingNumber", ribbonFlowController.GetRibbonFlow)
 
 	// QCOnline routes
-	qcOnlineRoutes := protected.Group("/qc-onlines")
-	qcOnlineRoutes.Get("/", qcOnlineController.GetQCOnlines)
-	qcOnlineRoutes.Get("/:id", qcOnlineController.GetQCOnline)
-	qcOnlineRoutes.Post("/", qcOnlineController.CreateQCOnline)
+	qcOnlineRoutes := protected.Group("/onlines")
+	// QC online routes
+	qcOnlineRoutes.Get("/qc-onlines/", qcOnlineController.GetQCOnlines)
+	qcOnlineRoutes.Get("/qc-onlines/:id", qcOnlineController.GetQCOnline)
+	qcOnlineRoutes.Post("/qc-onlines/", qcOnlineController.CreateQCOnline)
+	// Online flow routes
+	qcOnlineRoutes.Get("/flows", onlineFlowController.GetOnlineFlows)
+	qcOnlineRoutes.Get("/flows/:trackingNumber", onlineFlowController.GetOnlineFlow)
 
 	// Outbound routes
 	outboundRoutes := protected.Group("/outbounds")

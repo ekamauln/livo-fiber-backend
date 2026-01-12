@@ -35,7 +35,7 @@ type QCRibbonDetailRequest struct {
 // GetQCRibbons retrieves a list of qc ribbons with pagination and search
 // @Summary Get QC Ribbons
 // @Description Retrieve a list of QC Ribbons with pagination and search
-// @Tags QC Ribbons
+// @Tags Ribbons
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -46,7 +46,7 @@ type QCRibbonDetailRequest struct {
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/qc-ribbons [get]
+// @Router /api/ribbons/qc-ribbons [get]
 func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -131,7 +131,7 @@ func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 // GetQCRibbon retrieves a single qc ribbon by ID
 // @Summary Get QC Ribbon
 // @Description Retrieve a single QC Ribbon by ID
-// @Tags QC Ribbons
+// @Tags Ribbons
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -141,7 +141,7 @@ func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/qc-ribbons/{id} [get]
+// @Router /api/ribbons/qc-ribbons/{id} [get]
 func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 	// Parse id parameter
 	id := c.Params("id")
@@ -169,7 +169,7 @@ func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 // CreateQCRibbon creates a new QC Ribbon
 // @Summary Create QC Ribbon
 // @Description Create a new QC Ribbon
-// @Tags QC Ribbons
+// @Tags Ribbons
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -179,7 +179,7 @@ func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/qc-ribbons [post]
+// @Router /api/ribbons/qc-ribbons [post]
 func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 	// Binding request body
 	var req CreateQCRibbonRequest

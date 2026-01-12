@@ -35,7 +35,7 @@ type QCOnlineDetailRequest struct {
 // GetQCOnlines retrieves a list of qc onlines with pagination and search
 // @Summary Get QC Onlines
 // @Description Retrieve a list of QC Onlines with pagination and search
-// @Tags QC Onlines
+// @Tags Onlines
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -46,7 +46,7 @@ type QCOnlineDetailRequest struct {
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/qc-onlines [get]
+// @Router /api/onlines/qc-onlines [get]
 func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -131,7 +131,7 @@ func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 // GetQCOnline retrieves a single qc online by ID
 // @Summary Get QC Online
 // @Description Retrieve a single QC Online by ID
-// @Tags QC Onlines
+// @Tags Onlines
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -141,7 +141,7 @@ func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/qc-onlines/{id} [get]
+// @Router /api/onlines/qc-onlines/{id} [get]
 func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 	// Parse id parameter
 	id := c.Params("id")
@@ -169,7 +169,7 @@ func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 // CreateQCOnline creates a new QC Online
 // @Summary Create QC Online
 // @Description Create a new QC Online
-// @Tags QC Onlines
+// @Tags Onlines
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -179,7 +179,7 @@ func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 409 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/qc-onlines [post]
+// @Router /api/onlines/qc-onlines [post]
 func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
 	// Binding request body
 	var req CreateQCOnlineRequest

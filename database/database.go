@@ -135,6 +135,7 @@ func SeedInitialRole() error {
 		{RoleName: "admin", Hierarchy: 15},
 		{RoleName: "finance", Hierarchy: 15},
 		// Worker roles
+		{RoleName: "warehouse", Hierarchy: 20},
 		{RoleName: "picker", Hierarchy: 20},
 		{RoleName: "qc-ribbon", Hierarchy: 20},
 		{RoleName: "qc-online", Hierarchy: 20},
