@@ -5,6 +5,7 @@ import (
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -149,7 +150,7 @@ func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate 
 // @Param startDate query string false "Filter by start date (YYYY-MM-DD format)"
 // @Param endDate query string false "Filter by end date (YYYY-MM-DD format)"
 // @Param boxName query string false "Filter term for box name"
-// @Success 200 {object} utils.SuccessPaginatedResponse{data=[]BoxCountReportsListResponse}
+// @Success 200 {object} utils.SuccessTotaledResponse{data=[]BoxCountReportsListResponse}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
@@ -278,5 +279,95 @@ func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
 		Message: message,
 		Data:    response,
 		Total:   int64(len(reports)),
+	})
+}
+
+// GetOutboundReports generates outbound reports
+// @Summary Get Outbound Reports
+// @Description Generate outbound reports with optional filters
+// @Tags Reports
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param date query string false "Filter by date (YYYY-MM-DD format)"
+// @Param slug query string false "Filter term for outbound slug"
+// @Success 200 {object} utils.SuccessTotaledResponse{data=OutboundReportsListResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/reports/outbounds [get]
+func (rc *ReportController) GetOutboundReports(c fiber.Ctx) error {
+	// Parse query parameters
+	date := c.Query("date", "")
+	slug := c.Query("slug", "")
+
+	// Build base query
+	var outbounds []models.Outbound
+	query := rc.DB.Model(&models.Outbound{}).Order("created_at DESC")
+
+	// Apply date filters
+	if date != "" {
+		// Parse date dan validate format
+		parsedDate, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid date format. Use YYYY-MM-DD.",
+			})
+		}
+		// Filter for the entire day (from 00:00:00 to 23:59:59)
+		startOfDay := parsedDate.Format("2006-01-02 15:04:05")
+		endOfDay := parsedDate.AddDate(0, 0, 1).Format("2006-01-02 15:04:05")
+		query = query.Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay)
+	}
+
+	// Apply filter by slug with exact match
+	if slug != "" {
+		query = query.Where("expedition_slug = ?", slug)
+	}
+
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// retrieve results
+	if err := query.Find(&outbounds).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve outbound reports",
+		})
+	}
+
+	// Format response
+	outboundList := make([]models.OutboundResponse, len(outbounds))
+	for i, outbound := range outbounds {
+		outboundList[i] = *outbound.ToResponse()
+	}
+
+	// Build success message
+	message := "Outbound reports retrieved successfully"
+	var filters []string
+
+	if date != "" {
+		filters = append(filters, "date: "+date)
+	}
+
+	if slug != "" {
+		filters = append(filters, "slug: "+slug)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	response := OutboundReportsListResponse{
+		Outbounds: outboundList,
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
+		Total:   total,
 	})
 }

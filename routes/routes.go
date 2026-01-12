@@ -28,6 +28,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	ribbonFlowController := controllers.NewRibbonFlowController(db)
 	onlineFlowController := controllers.NewOnlineFlowController(db)
 	reportController := controllers.NewReportController(db)
+	lostFoundController := controllers.NewLostFoundController(db)
 	// returnController := controllers.NewReturnController()
 	// complainController := controllers.NewComplainController()
 
@@ -281,5 +282,14 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Report routes
 	reportRoutes := protected.Group("/reports")
 	reportRoutes.Get("/boxes", reportController.GetBoxReports)
+	reportRoutes.Get("/outbounds", reportController.GetOutboundReports)
+
+	// Lost and Found routes
+	lostFoundRoutes := protected.Group("/lostfounds")
+	lostFoundRoutes.Get("/", lostFoundController.GetLostfounds)
+	lostFoundRoutes.Get("/:id", lostFoundController.GetLostfound)
+	lostFoundRoutes.Post("/", lostFoundController.CreateLostfound)
+	lostFoundRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator", "admin"}), lostFoundController.UpdateLostfound)
+	lostFoundRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), lostFoundController.DeleteLostfound)
 
 }
