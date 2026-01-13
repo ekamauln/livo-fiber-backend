@@ -14,9 +14,11 @@ type PickedOrder struct {
 }
 
 type PickedOrderResponse struct {
-	ID       uint           `json:"id"`
-	PickedBy string         `json:"pickedBy"`
-	Order    *OrderResponse `json:"order,omitempty"`
+	ID        uint           `json:"id"`
+	PickedBy  string         `json:"pickedBy"`
+	Order     *OrderResponse `json:"order,omitempty"`
+	CreatedAt string         `json:"createdAt"`
+	UpdatedAt string         `json:"updatedAt"`
 }
 
 // ToResponse converts a PickedOrder model to a PickedOrderResponse
@@ -34,8 +36,10 @@ func (po *PickedOrder) ToResponse() *PickedOrderResponse {
 	}
 
 	return &PickedOrderResponse{
-		ID:       po.ID,
-		PickedBy: pickedBy,
-		Order:    orderResp,
+		ID:        po.ID,
+		PickedBy:  pickedBy,
+		Order:     orderResp,
+		CreatedAt: po.CreatedAt.Format("02-01-2006 15:04:05"),
+		UpdatedAt: po.UpdatedAt.Format("02-01-2006 15:04:05"),
 	}
 }

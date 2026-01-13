@@ -105,14 +105,13 @@ func MigrateDatabase() error {
 		&models.LostFound{},
 		&models.Return{},
 		&models.ReturnDetail{},
-		// &models.Return{},
+		&models.PickedOrder{},
+		&models.Return{},
+		&models.ReturnDetail{},
+		&models.LostFound{},
 		// &models.Complain{},
 		// &models.ComplainUserDetail{},
 		// &models.ComplainProductDetail{},
-		// &models.LostFound{},
-		// &models.PickedOrder{},
-		// &models.Return{},
-		// &models.ReturnDetail{},
 	)
 
 	if err != nil {
