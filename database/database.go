@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/config"
 	"livo-fiber-backend/models"
+	"livo-fiber-backend/utils"
 	"log"
 	"time"
 
@@ -102,6 +103,8 @@ func MigrateDatabase() error {
 		&models.QCOnlineDetail{},
 		&models.Outbound{},
 		&models.LostFound{},
+		&models.Return{},
+		&models.ReturnDetail{},
 		// &models.Return{},
 		// &models.Complain{},
 		// &models.ComplainUserDetail{},
@@ -141,6 +144,7 @@ func SeedInitialRole() error {
 		{RoleName: "qc-ribbon", Hierarchy: 20},
 		{RoleName: "qc-online", Hierarchy: 20},
 		{RoleName: "outbound", Hierarchy: 20},
+		{RoleName: "security", Hierarchy: 20},
 		// Lowest privilege role
 		{RoleName: "guest", Hierarchy: 99},
 	}
@@ -361,6 +365,80 @@ func SeedInitialStore() error {
 	}
 
 	log.Println("✅ Stores seeding completed successfully")
+	return nil
+}
+
+func SeedInitialUser() error {
+	log.Println("🌱 Seeding initial user data into the database...")
+
+	// Define initial users
+	type InitialUser struct {
+		Username string
+		Password string
+		FullName string
+		Email    string
+		RoleName string
+	}
+
+	initialUsers := []InitialUser{
+		{
+			Username: "admin",
+			Password: "12345678",
+			FullName: "Administrator",
+			Email:    "admin@example.com",
+			RoleName: "developer",
+		},
+		{
+			Username: "security",
+			Password: "12345678",
+			FullName: "Security",
+			Email:    "security@example.com",
+			RoleName: "security",
+		},
+	}
+
+	for _, userData := range initialUsers {
+		// Check if user already exists
+		var existingUser models.User
+		result := DB.Where("username = ?", userData.Username).First(&existingUser)
+
+		if result.Error == gorm.ErrRecordNotFound {
+			// Get role
+			var role models.Role
+			if err := DB.Where("role_name = ?", userData.RoleName).First(&role).Error; err != nil {
+				return fmt.Errorf("%s role not found. Please seed roles first: %w", userData.RoleName, err)
+			}
+
+			// Hash password
+			hashedPassword, err := utils.HashPassword(userData.Password)
+			if err != nil {
+				return fmt.Errorf("failed to hash password for %s: %w", userData.Username, err)
+			}
+
+			// Create user
+			user := models.User{
+				Username: userData.Username,
+				Password: hashedPassword,
+				FullName: userData.FullName,
+				Email:    userData.Email,
+				IsActive: true,
+			}
+
+			if err := DB.Create(&user).Error; err != nil {
+				return fmt.Errorf("failed to create user %s: %w", userData.Username, err)
+			}
+
+			// Assign role to user
+			if err := DB.Exec("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", user.ID, role.ID).Error; err != nil {
+				return fmt.Errorf("failed to assign role to user %s: %w", userData.Username, err)
+			}
+
+			log.Printf("✅ User '%s' created successfully (password: %s, role: %s)", userData.Username, userData.Password, userData.RoleName)
+		} else {
+			log.Printf("ℹ️ User '%s' already exists, skipping seed", userData.Username)
+		}
+	}
+
 	return nil
 }
 

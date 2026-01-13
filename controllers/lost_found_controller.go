@@ -41,7 +41,7 @@ type UpdateLostFoundRequest struct {
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of records per page" default(10)
 // @Param search query string false "Search term for product SKU or reason"
-// @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.LostFoundresponse}
+// @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.LostFoundResponse}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
@@ -84,7 +84,7 @@ func (lfc *LostFoundController) GetLostfounds(c fiber.Ctx) error {
 	}
 
 	// Format response
-	lostFoundList := make([]models.LostFoundresponse, len(lostFounds))
+	lostFoundList := make([]models.LostFoundResponse, len(lostFounds))
 	for i, lostFound := range lostFounds {
 		lostFoundList[i] = lostFound.ToResponse()
 	}
@@ -122,7 +122,7 @@ func (lfc *LostFoundController) GetLostfounds(c fiber.Ctx) error {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Lost and Found ID"
-// @Success 200 {object} utils.SuccessResponse{data=models.LostFoundresponse}
+// @Success 200 {object} utils.SuccessResponse{data=models.LostFoundResponse}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
@@ -227,7 +227,7 @@ func (lfc *LostFoundController) CreateLostfound(c fiber.Ctx) error {
 // @Security BearerAuth
 // @Param id path int true "Lost and Found ID"
 // @Param request body UpdateLostFoundRequest true "Update request details"
-// @Success 200 {object} utils.SuccessResponse{data=models.LostFoundresponse}
+// @Success 200 {object} utils.SuccessResponse{data=models.LostFound}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse

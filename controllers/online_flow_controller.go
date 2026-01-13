@@ -189,7 +189,7 @@ func (ofc *OnlineFlowController) BuildOnlineFlow(trackingNumber string) OnlineFl
 // GetOnlineFlows retrieves all online flows with their associated QC Online, Outbound, and Order details (with pagination and search)
 // @Summary Get all online flows
 // @Description Retrieve all online flows with their associated QC Online, Outbound, and Order details (with pagination and search)
-// @Tags Online
+// @Tags Onlines
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -202,7 +202,7 @@ func (ofc *OnlineFlowController) BuildOnlineFlow(trackingNumber string) OnlineFl
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/online/flows [get]
+// @Router /api/onlines/flows [get]
 func (ofc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -309,7 +309,7 @@ func (ofc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 // GetOnlineFlow retrieves a single online flow by tracking number
 // @Summary Get a single online flow
 // @Description Retrieve a single online flow by tracking number
-// @Tags Online
+// @Tags Onlines
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -320,7 +320,7 @@ func (ofc *OnlineFlowController) GetOnlineFlows(c fiber.Ctx) error {
 // @Failure 403 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/online/flows/{trackingNumber} [get]
+// @Router /api/onlines/flows/{trackingNumber} [get]
 func (ofc *OnlineFlowController) GetOnlineFlow(c fiber.Ctx) error {
 	trackingNumber := c.Params("trackingNumber")
 

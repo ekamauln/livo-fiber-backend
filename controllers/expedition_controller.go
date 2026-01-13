@@ -21,13 +21,13 @@ func NewExpeditionController(db *gorm.DB) *ExpeditionController {
 
 // Request structs
 type CreateExpeditionRequest struct {
-	ExpeditionCode  string `json:"expeditionCode" validate:"required,min=3,max=50"`
+	ExpeditionCode  string `json:"expeditionCode" validate:"required,min=1,max=4"`
 	ExpeditionName  string `json:"expeditionName" validate:"required,min=3,max=100"`
 	ExpeditionColor string `json:"expeditionColor" validate:"required,min=3,max=20"`
 }
 
 type UpdateExpeditionRequest struct {
-	ExpeditionCode  string `json:"expeditionCode" validate:"required,min=3,max=50"`
+	ExpeditionCode  string `json:"expeditionCode" validate:"required,min=1,max=4"`
 	ExpeditionName  string `json:"expeditionName" validate:"required,min=3,max=100"`
 	ExpeditionColor string `json:"expeditionColor" validate:"required,min=3,max=20"`
 }

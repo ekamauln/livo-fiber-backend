@@ -15,7 +15,8 @@ type LostFound struct {
 	Product    *Product `gorm:"-" json:"product,omitempty"`
 }
 
-type LostFoundresponse struct {
+// LostFoundResponse represents the response structure for LostFound
+type LostFoundResponse struct {
 	ID         uint             `json:"id"`
 	ProductSKU string           `json:"productSKU"`
 	Quantity   int              `json:"quantity"`
@@ -26,7 +27,8 @@ type LostFoundresponse struct {
 	Product    *ProductResponse `json:"product,omitempty"`
 }
 
-func (lf *LostFound) ToResponse() LostFoundresponse {
+// ToResponse converts LostFound model to LostFoundResponse
+func (lf *LostFound) ToResponse() LostFoundResponse {
 	// user visual handler
 	var createdBy string
 	if lf.CreateUser != nil {
@@ -39,7 +41,7 @@ func (lf *LostFound) ToResponse() LostFoundresponse {
 		productResp = lf.Product.ToResponse()
 	}
 
-	return LostFoundresponse{
+	return LostFoundResponse{
 		ID:         lf.ID,
 		ProductSKU: lf.ProductSKU,
 		Quantity:   lf.Quantity,

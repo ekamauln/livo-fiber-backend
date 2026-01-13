@@ -52,6 +52,7 @@ func main() {
 	database.SeedInitialChannel()
 	database.SeedInitialExpedition()
 	database.SeedInitialStore()
+	database.SeedInitialUser()
 
 	// Get database instance
 	database.GetDB()
