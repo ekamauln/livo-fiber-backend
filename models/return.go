@@ -66,15 +66,22 @@ type ReturnDetailResponse struct {
 // ToResponse converts Return model to ReturnResponse
 func (r *Return) ToResponse() ReturnResponse {
 	// Convert Return Details
-	details := make([]ReturnDetailResponse, len(*r.ReturnDetails))
-	for i, detail := range *r.ReturnDetails {
-		detailResp := ReturnDetailResponse{
-			ProductSKU: detail.ProductSKU,
-			Quantity:   detail.Quantity,
-			Price:      detail.Price,
-			Product:    detail.Product.ToResponse(),
+	var details []ReturnDetailResponse
+	if r.ReturnDetails != nil {
+		details = make([]ReturnDetailResponse, len(*r.ReturnDetails))
+		for i, detail := range *r.ReturnDetails {
+			detailResp := ReturnDetailResponse{
+				ProductSKU: detail.ProductSKU,
+				Quantity:   detail.Quantity,
+				Price:      detail.Price,
+			}
+			// Only add product response if product exists
+			if detail.Product != nil {
+				productResp := detail.Product.ToResponse()
+				detailResp.Product = productResp
+			}
+			details[i] = detailResp
 		}
-		details[i] = detailResp
 	}
 
 	// Channel and Store names
@@ -94,15 +101,16 @@ func (r *Return) ToResponse() ReturnResponse {
 		createdBy = r.CreateUser.FullName
 	}
 
-	var updatedBy string
+	var updatedBy *string
 	if r.UpdateUser != nil {
-		updatedBy = r.UpdateUser.FullName
+		updatedBy = &r.UpdateUser.FullName
 	}
 
 	// Include Order response if tracking number exists in Order
 	var orderResponse *OrderResponse
 	if r.Order != nil {
-		orderResponse = r.Order.ToOrderResponse()
+		orderResp := r.Order.ToOrderResponse()
+		orderResponse = orderResp
 	}
 
 	return ReturnResponse{
@@ -112,7 +120,7 @@ func (r *Return) ToResponse() ReturnResponse {
 		Channel:           channelName,
 		Store:             storeName,
 		CreatedBy:         createdBy,
-		UpdatedBy:         &updatedBy,
+		UpdatedBy:         updatedBy,
 		TrackingNumber:    r.TrackingNumber,
 		ReturnType:        r.ReturnType,
 		ReturnReason:      r.ReturnReason,

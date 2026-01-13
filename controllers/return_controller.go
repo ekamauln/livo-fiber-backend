@@ -64,7 +64,7 @@ func (rc *ReturnController) GetReturns(c fiber.Ctx) error {
 	var returns []models.Return
 
 	// Build base query
-	query := rc.DB.Preload("ReturnDetails").Preload("CreateUser").Preload("UpdateUser").Model(&models.Return{}).Order("created_at DESC")
+	query := rc.DB.Preload("ReturnDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Preload("UpdateUser").Model(&models.Return{}).Order("created_at DESC")
 
 	// Date range filter if provided
 	startDate := c.Query("startDate", "")
@@ -118,6 +118,19 @@ func (rc *ReturnController) GetReturns(c fiber.Ctx) error {
 			var order models.Order
 			if err := rc.DB.Where("tracking_number = ?", returns[i].TrackingNumber).First(&order).Error; err == nil {
 				returns[i].Order = &order
+			}
+		}
+
+		// Load products for return details
+		if returns[i].ReturnDetails != nil {
+			for j := range *returns[i].ReturnDetails {
+				detail := &(*returns[i].ReturnDetails)[j]
+				if detail.ProductSKU != nil {
+					var product models.Product
+					if err := rc.DB.Where("sku = ?", *detail.ProductSKU).First(&product).Error; err == nil {
+						detail.Product = &product
+					}
+				}
 			}
 		}
 	}
@@ -197,6 +210,19 @@ func (rc *ReturnController) GetReturn(c fiber.Ctx) error {
 		}
 	}
 
+	// Load products for return details
+	if ret.ReturnDetails != nil {
+		for i := range *ret.ReturnDetails {
+			detail := &(*ret.ReturnDetails)[i]
+			if detail.ProductSKU != nil {
+				var product models.Product
+				if err := rc.DB.Where("sku = ?", *detail.ProductSKU).First(&product).Error; err == nil {
+					detail.Product = &product
+				}
+			}
+		}
+	}
+
 	// Return success response
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
@@ -230,10 +256,10 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 	}
 
 	// Get current user logged in user
-	userIDStr := c.Locals("user_id").(string)
-	UserID, err := strconv.ParseUint(userIDStr, 10, 32)
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid user ID",
 		})
@@ -251,18 +277,21 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 		})
 	}
 
-	// If TrackingNumber is provided, convert to uppercase and trim spaces and check if it's exists in Order
-	if req.TrackingNumber != nil {
+	// If TrackingNumber is provided, convert to uppercase and trim spaces
+	var order *models.Order
+	if req.TrackingNumber != nil && *req.TrackingNumber != "" {
 		tracking := strings.ToUpper(strings.TrimSpace(*req.TrackingNumber))
 		req.TrackingNumber = &tracking
-	}
 
-	var order models.Order
-	if err := rc.DB.Preload("OrderDetails").Where("tracking_number = ?", req.TrackingNumber).First(&order).Error; err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Order with tracking number " + *req.TrackingNumber + " not found",
-		})
+		// Check if it exists in Order
+		var orderData models.Order
+		if err := rc.DB.Preload("OrderDetails").Where("tracking_number = ?", req.TrackingNumber).First(&orderData).Error; err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Order with tracking number " + *req.TrackingNumber + " not found",
+			})
+		}
+		order = &orderData
 	}
 
 	// Start database transaction
@@ -282,8 +311,12 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 		ReturnReason:      req.ReturnReason,
 		ReturnNumber:      req.ReturnNumber,
 		ScrapNumber:       req.ScrapNumber,
-		CreatedBy:         uint(UserID),
-		OrderGineeID:      &order.OrderGineeID,
+		CreatedBy:         uint(userID),
+	}
+
+	// Set OrderGineeID if order exists
+	if order != nil {
+		ret.OrderGineeID = &order.OrderGineeID
 	}
 
 	if err := tx.Create(&ret).Error; err != nil {
@@ -294,21 +327,23 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 		})
 	}
 
-	// Create ReturnDetails from OrderDetails
-	for _, orderDetail := range order.OrderDetails {
-		returnDetail := models.ReturnDetail{
-			ReturnID:   &ret.ID,
-			ProductSKU: &orderDetail.SKU,
-			Quantity:   &orderDetail.Quantity,
-			Price:      &orderDetail.Price,
-		}
+	// Create ReturnDetails from OrderDetails if order exists
+	if order != nil {
+		for _, orderDetail := range order.OrderDetails {
+			returnDetail := models.ReturnDetail{
+				ReturnID:   &ret.ID,
+				ProductSKU: &orderDetail.SKU,
+				Quantity:   &orderDetail.Quantity,
+				Price:      &orderDetail.Price,
+			}
 
-		if err := tx.Create(&returnDetail).Error; err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-				Success: false,
-				Error:   "Failed to create return details",
-			})
+			if err := tx.Create(&returnDetail).Error; err != nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+					Success: false,
+					Error:   "Failed to create return details",
+				})
+			}
 		}
 	}
 
@@ -321,11 +356,32 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 	}
 
 	// Reload return with details
-	if err := rc.DB.Preload("ReturnDetails").Preload("CreateUser").Preload("UpdateUser").First(&ret, ret.ID).Error; err != nil {
+	if err := rc.DB.Preload("ReturnDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Preload("UpdateUser").First(&ret, ret.ID).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve created return",
 		})
+	}
+
+	// Include Order details if TrackingNumber exists in Order
+	if ret.TrackingNumber != nil {
+		var order models.Order
+		if err := rc.DB.Where("tracking_number = ?", ret.TrackingNumber).First(&order).Error; err == nil {
+			ret.Order = &order
+		}
+	}
+
+	// Load products for return details
+	if ret.ReturnDetails != nil {
+		for i := range *ret.ReturnDetails {
+			detail := &(*ret.ReturnDetails)[i]
+			if detail.ProductSKU != nil {
+				var product models.Product
+				if err := rc.DB.Where("sku = ?", *detail.ProductSKU).First(&product).Error; err == nil {
+					detail.Product = &product
+				}
+			}
+		}
 	}
 
 	// Return success response
@@ -372,10 +428,10 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 	}
 
 	// Get current user logged in user
-	userIDStr := c.Locals("user_id").(string)
-	UserID, err := strconv.ParseUint(userIDStr, 10, 32)
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid user ID",
 		})
@@ -421,7 +477,7 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 	}()
 
 	// Update return fields
-	updatedBy := uint(UserID)
+	updatedBy := uint(userID)
 
 	ret.TrackingNumber = req.TrackingNumber
 	ret.ReturnType = req.ReturnType
@@ -429,6 +485,11 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 	ret.ReturnNumber = req.ReturnNumber
 	ret.ScrapNumber = req.ScrapNumber
 	ret.UpdatedBy = &updatedBy
+
+	// Update OrderGineeID if tracking number is provided and order exists
+	if req.TrackingNumber != nil && order.ID != 0 {
+		ret.OrderGineeID = &order.OrderGineeID
+	}
 
 	if err := tx.Save(&ret).Error; err != nil {
 		tx.Rollback()
@@ -467,11 +528,32 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 	}
 
 	// Reload return with details
-	if err := rc.DB.Preload("ReturnDetails").Preload("CreateUser").Preload("UpdateUser").First(&ret, ret.ID).Error; err != nil {
+	if err := rc.DB.Preload("ReturnDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Preload("UpdateUser").First(&ret, ret.ID).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve updated return",
 		})
+	}
+
+	// Include Order details if TrackingNumber exists in Order
+	if ret.TrackingNumber != nil {
+		var order models.Order
+		if err := rc.DB.Where("tracking_number = ?", ret.TrackingNumber).First(&order).Error; err == nil {
+			ret.Order = &order
+		}
+	}
+
+	// Load products for return details
+	if ret.ReturnDetails != nil {
+		for i := range *ret.ReturnDetails {
+			detail := &(*ret.ReturnDetails)[i]
+			if detail.ProductSKU != nil {
+				var product models.Product
+				if err := rc.DB.Where("sku = ?", *detail.ProductSKU).First(&product).Error; err == nil {
+					detail.Product = &product
+				}
+			}
+		}
 	}
 
 	// Return success response

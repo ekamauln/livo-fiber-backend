@@ -49,6 +49,11 @@ type OutboundReportsListResponse struct {
 	Total     int
 }
 
+type ReturnReportsListResponse struct {
+	Returns []models.ReturnResponse `json:"returns"`
+	Total   int
+}
+
 // BuildBoxUsageDetails retrieves detailed usage for a specific box
 func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate string) []BoxUsageDetail {
 	var details []BoxUsageDetail
@@ -362,6 +367,107 @@ func (rc *ReportController) GetOutboundReports(c fiber.Ctx) error {
 
 	response := OutboundReportsListResponse{
 		Outbounds: outboundList,
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
+		Total:   total,
+	})
+}
+
+// GetReturnReports generates return reports
+// @Summary Get Return Reports
+// @Description Generate return reports with optional filters
+// @Tags Reports
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param date query string false "Filter by date (YYYY-MM-DD format)"
+// @Param channelId query string false "Filter term for channel ID"
+// @Param storeId query string false "Filter term for store ID"
+// @Success 200 {object} utils.SuccessTotaledResponse{data=[]models.ReturnResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/reports/returns [get]
+func (rc *ReportController) GetReturnReports(c fiber.Ctx) error {
+	// Parse query parameters
+	date := c.Query("date", "")
+	channelId := c.Query("channelId", "")
+	storeId := c.Query("storeId", "")
+
+	// Build base query
+	var returns []models.Return
+	query := rc.DB.Model(&models.Return{}).Order("created_at DESC")
+
+	// Apply date filters
+	if date != "" {
+		// Parse date dan validate format
+		parsedDate, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid date format. Use YYYY-MM-DD.",
+			})
+		}
+		// Filter for the entire day (from 00:00:00 to 23:59:59)
+		startOfDay := parsedDate.Format("2006-01-02 15:04:05")
+		endOfDay := parsedDate.AddDate(0, 0, 1).Format("2006-01-02 15:04:05")
+		query = query.Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay)
+	}
+
+	// Apply filter by channel ID
+	if channelId != "" {
+		query = query.Where("channel_id = ?", channelId)
+	}
+
+	// Apply filter by store ID
+	if storeId != "" {
+		query = query.Where("store_id = ?", storeId)
+	}
+
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// retrieve results
+	if err := query.Preload("ReturnDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Preload("UpdateUser").Find(&returns).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve return reports",
+		})
+	}
+
+	// Format response
+	returnList := make([]models.ReturnResponse, len(returns))
+	for i, ret := range returns {
+		returnList[i] = ret.ToResponse()
+	}
+
+	// Build success message
+	message := "Return reports retrieved successfully"
+	var filters []string
+
+	if date != "" {
+		filters = append(filters, "date: "+date)
+	}
+
+	if channelId != "" {
+		filters = append(filters, "channelId: "+channelId)
+	}
+
+	if storeId != "" {
+		filters = append(filters, "storeId: "+storeId)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	response := ReturnReportsListResponse{
+		Returns: returnList,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{

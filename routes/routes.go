@@ -283,6 +283,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	reportRoutes := protected.Group("/reports")
 	reportRoutes.Get("/boxes", reportController.GetBoxReports)
 	reportRoutes.Get("/outbounds", reportController.GetOutboundReports)
+	reportRoutes.Get("/returns", reportController.GetReturnReports)
 
 	// Lost and Found routes
 	lostFoundRoutes := protected.Group("/lostfounds")
@@ -295,5 +296,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Return routes
 	returnRoutes := protected.Group("/returns")
 	returnRoutes.Get("/", returnController.GetReturns)
-
+	returnRoutes.Get("/:id", returnController.GetReturn)
+	returnRoutes.Post("/", returnController.CreateReturn)
+	returnRoutes.Put("/:id", returnController.UpdateReturn)
 }
