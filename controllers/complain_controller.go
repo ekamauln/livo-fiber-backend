@@ -69,7 +69,7 @@ func (cc *ComplainController) GetComplains(c fiber.Ctx) error {
 	var complains []models.Complain
 
 	// Build base query
-	query := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Model(&models.Complain{}).Order("created_at DESC")
+	query := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Model(&models.Complain{}).Order("created_at DESC")
 
 	// Date range filter if provided
 	startDate := c.Query("startDate", "")
@@ -177,7 +177,7 @@ func (cc *ComplainController) GetComplain(c fiber.Ctx) error {
 	// Parse id parameter
 	id := c.Params("id")
 	var complain models.Complain
-	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", id).First(&complain).Error; err != nil {
+	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", id).First(&complain).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Complain with id " + id + " not found.",
@@ -206,47 +206,74 @@ func (cc *ComplainController) GetComplain(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/complains [post]
 func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
+	// Get current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+	fmt.Printf("Current user ID: %d", userID)
+
+	username := c.Locals("username").(string)
+	fmt.Printf("Current username: %s", username)
+
 	// Parse request body
 	var req CreateComplainRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		fmt.Printf("ERROR: Failed to parse request body: %v\n", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
 		})
 	}
 
-	// Get the username of the creator from context (assuming middleware sets it)
-	username := c.Locals("username").(string)
-
 	// Check if tracking number already exists
 	var existingComplain models.Complain
 	if err := cc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingComplain).Error; err == nil {
+		fmt.Println("ERROR: Complain with this tracking number already exists")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
-			Error:   "Complain with the same tracking number already exists.",
+			Error:   "Complain with tracking number " + req.TrackingNumber + " already exists.",
 		})
 	}
+	fmt.Println("Tracking number check passed - no duplicate found")
 
 	// Generate complain code
 	complainCode := utils.GenerateComplainCode(cc.DB, username, "")
+	fmt.Printf("Generated complain code: %s\n", complainCode)
 
 	// Start transaction
 	tx := cc.DB.Begin()
+	if tx.Error != nil {
+		fmt.Printf("ERROR: Failed to start transaction: %v\n", tx.Error)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to start transaction",
+		})
+	}
+	fmt.Println("Transaction started successfully")
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("PANIC: Recovered from panic: %v\n", r)
 			tx.Rollback()
 		}
 	}()
 
 	// Find order by tracking to get OrderGineeID and populate product details
+	fmt.Printf("Looking for order with tracking number: %s\n", req.TrackingNumber)
 	var order models.Order
 	if err := tx.Preload("OrderDetails").Where("tracking_number = ?", req.TrackingNumber).First(&order).Error; err != nil {
+		fmt.Printf("ERROR: Order not found: %v\n", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order with tracking number " + req.TrackingNumber + " not found.",
 		})
 	}
+	fmt.Printf("Order found: ID=%d, OrderGineeID=%s, %d details\n", order.ID, order.OrderGineeID, len(order.OrderDetails))
 
 	// Create complain record
 	complain := models.Complain{
@@ -255,20 +282,24 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 		OrderGineeID:   order.OrderGineeID,
 		ChannelID:      req.ChannelID,
 		StoreID:        req.StoreID,
-		CreatedBy:      c.Locals("userID").(uint),
+		CreatedBy:      uint(userID),
 		Reason:         req.Reason,
 	}
+	fmt.Printf("Creating complain: %+v\n", complain)
 
 	if err := tx.Create(&complain).Error; err != nil {
+		fmt.Printf("ERROR: Failed to create complain: %v\n", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create complain",
 		})
 	}
+	fmt.Printf("Complain created successfully with ID: %d\n", complain.ID)
 
 	// Populate complain product details from order
-	for _, orderDetail := range order.OrderDetails {
+	fmt.Printf("Creating %d complain product details\n", len(order.OrderDetails))
+	for i, orderDetail := range order.OrderDetails {
 		complainProductDetail := models.ComplainProductDetail{
 			ComplainID: complain.ID,
 			ProductSKU: orderDetail.SKU,
@@ -277,13 +308,16 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 		}
 
 		if err := tx.Create(&complainProductDetail).Error; err != nil {
+			fmt.Printf("ERROR: Failed to create product detail %d: %v\n", i, err)
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to create complain product details",
 			})
 		}
+		fmt.Printf("Product detail %d created: SKU=%s, Qty=%d\n", i, orderDetail.SKU, orderDetail.Quantity)
 	}
+	fmt.Println("All product details created successfully")
 
 	// Populate complain user details with zero fee charge initially
 	userIDs := make(map[uint]bool) // To avoid duplicate user details
@@ -292,44 +326,65 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 	var qcRibbon models.QCRibbon
 	if err := tx.Where("tracking_number = ?", req.TrackingNumber).First(&qcRibbon).Error; err == nil && qcRibbon.QCBy != 0 {
 		userIDs[qcRibbon.QCBy] = true
-
-		// Update qc ribbon if tracking number is complained
-		qcRibbon.Complained = true
-		tx.Save(&qcRibbon)
+		// Update qc ribbon complained status
+		if err := tx.Model(&qcRibbon).Update("complained", true).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Failed to update QC Ribbon complained status",
+			})
+		}
 	}
 
 	// Check qc online
 	var qcOnline models.QCOnline
 	if err := tx.Where("tracking_number = ?", req.TrackingNumber).First(&qcOnline).Error; err == nil && qcOnline.QCBy != 0 {
 		userIDs[qcOnline.QCBy] = true
-
-		// Update qc online if tracking number is complained
-		qcOnline.Complained = true
-		tx.Save(&qcOnline)
+		// Update qc online complained status
+		if err := tx.Model(&qcOnline).Update("complained", true).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Failed to update QC Online complained status",
+			})
+		}
 	}
 
 	// Check Outbound
 	var outbound models.Outbound
 	if err := tx.Where("tracking_number = ?", req.TrackingNumber).First(&outbound).Error; err == nil && outbound.OutboundBy != 0 {
 		userIDs[outbound.OutboundBy] = true
-
-		// Update outbound if tracking number is complained
-		outbound.Complained = true
-		tx.Save(&outbound)
+		// Update outbound complained status
+		if err := tx.Model(&outbound).Update("complained", true).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Failed to update Outbound complained status",
+			})
+		}
 	}
 
 	// Check Order Assigned User
 	var orderUser models.Order
-	if err := tx.Where("tracking_number = ?", req.TrackingNumber).First(&orderUser).Error; err == nil && orderUser.PickedBy != nil && orderUser.AssignedBy != nil {
-		userIDs[*orderUser.PickedBy] = true
-		userIDs[*orderUser.AssignedBy] = true
-
-		// Update order if tracking number is complained
-		orderUser.Complained = true
-		tx.Save(&orderUser)
+	if err := tx.Where("tracking_number = ?", req.TrackingNumber).First(&orderUser).Error; err == nil {
+		if orderUser.PickedBy != nil {
+			userIDs[*orderUser.PickedBy] = true
+		}
+		if orderUser.AssignedBy != nil {
+			userIDs[*orderUser.AssignedBy] = true
+		}
+		// Update order complained status
+		if err := tx.Model(&orderUser).Update("complained", true).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Failed to update Order complained status",
+			})
+		}
 	}
 
 	// Create user details for each unique user found
+	fmt.Printf("Creating %d user details\n", len(userIDs))
 	for userIDValue := range userIDs {
 		userDetail := models.ComplainUserDetail{
 			ComplainID: complain.ID,
@@ -338,32 +393,42 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 		}
 
 		if err := tx.Create(&userDetail).Error; err != nil {
+			fmt.Printf("ERROR: Failed to create user detail for userID=%d: %v\n", userIDValue, err)
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to create complain user details",
 			})
 		}
+		fmt.Printf("User detail created for userID=%d\n", userIDValue)
 	}
+	fmt.Println("All user details created successfully")
 
 	// Commit transaction
+	fmt.Println("Committing transaction...")
 	if err := tx.Commit().Error; err != nil {
+		fmt.Printf("ERROR: Transaction commit failed: %v\n", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to commit transaction",
 		})
 	}
+	fmt.Println("Transaction committed successfully!")
 
 	// Load created complain with related data
-	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
+	fmt.Println("Loading created complain with related data...")
+	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
+		fmt.Printf("ERROR: Failed to retrieve created complain: %v\n", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve created complain",
 		})
 	}
+	fmt.Println("Complain loaded successfully")
 
 	complain.Order = &order
 
+	fmt.Println("=== CreateComplain SUCCESS - Returning 201 ===")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Complain created successfully",
@@ -464,7 +529,7 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 	}
 
 	// Load updated complain with related data
-	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
+	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve updated complain",
@@ -532,7 +597,7 @@ func (cc *ComplainController) UpdateComplainCheck(c fiber.Ctx) error {
 	}
 
 	// Load related data
-	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
+	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve updated complain",

@@ -309,5 +309,9 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Complain routes
 	complainRoutes := protected.Group("/complains")
 	complainRoutes.Get("/", complainController.GetComplains)
+	complainRoutes.Get("/:id", complainController.GetComplain)
+	complainRoutes.Post("/", complainController.CreateComplain)
+	complainRoutes.Put("/:id", complainController.UpdateComplain)
+	complainRoutes.Put("/:id/check", complainController.UpdateComplainCheck)
 
 }
