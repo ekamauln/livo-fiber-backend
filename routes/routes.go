@@ -32,6 +32,9 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	returnController := controllers.NewReturnController(db)
 	returnPickedOrderController := controllers.NewPickedOrderController(db)
 	complainController := controllers.NewComplainController(db)
+	mobileChannelController := controllers.NewMobileChannelController(db)
+	mobileStoreController := controllers.NewMobileStoreController(db)
+	mobileReturnController := controllers.NewMobileReturnController(db)
 
 	// Public routes
 	api := app.Group("/api")
@@ -149,6 +152,12 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	auth.Post("/register", authController.Register)
 	auth.Post("/login", authController.Login)
 	auth.Post("/refresh", authController.RefreshToken)
+
+	// Mobile Returns routes (public)
+	mobileReturns := api.Group("/mobile-returns")
+	mobileReturns.Get("/channels", mobileChannelController.GetMobileChannels)
+	mobileReturns.Get("/stores", mobileStoreController.GetMobileStores)
+	mobileReturns.Get("/", mobileReturnController.GetMobileReturns)
 
 	// CSRF token endpoint for web clients
 	auth.Get("/csrf-token", middleware.CSRFMiddleware(), func(c fiber.Ctx) error {
@@ -313,5 +322,4 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	complainRoutes.Post("/", complainController.CreateComplain)
 	complainRoutes.Put("/:id", complainController.UpdateComplain)
 	complainRoutes.Put("/:id/check", complainController.UpdateComplainCheck)
-
 }
