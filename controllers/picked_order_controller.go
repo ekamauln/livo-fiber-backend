@@ -46,7 +46,7 @@ func (poc *PickedOrderController) GetPickedOrders(c fiber.Ctx) error {
 	var pickedOrders []models.PickedOrder
 
 	// Build base query
-	query := poc.DB.Model(&models.PickedOrder{}).Preload("User").Preload("Order").Preload("Order.OrderDetails").Preload("Order.AssignUser").Preload("Order.PickUser").Preload("Order.PendingUser").Preload("Order.ChangeUser").Preload("Order.DuplicateUser").Preload("Order.CancelUser").Order("created_at DESC")
+	query := poc.DB.Model(&models.PickedOrder{}).Preload("PickUser").Preload("Order").Preload("Order.OrderDetails").Preload("Order.AssignUser").Preload("Order.PickUser").Preload("Order.PendingUser").Preload("Order.ChangeUser").Preload("Order.DuplicateUser").Preload("Order.CancelUser").Order("created_at DESC")
 
 	// Date range filtering
 	startDate := c.Query("startDate")

@@ -33,7 +33,7 @@ type Config struct {
 func LoadConfig() *Config {
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
-		corsOrigins = "http://localhost:3000"
+		corsOrigins = "http://192.168.31.147:3000"
 	}
 
 	accessTokenTTL, err := strconv.Atoi(os.Getenv("ACCESS_TOKEN_TTL"))

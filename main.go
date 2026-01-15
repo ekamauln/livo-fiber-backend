@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+
 	"time"
 
 	"livo-fiber-backend/config"
@@ -31,7 +32,7 @@ import (
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host localhost:8040
+// @host 192.168.31.147:8040
 // @BasePath /
 // @schemes http https
 
@@ -81,8 +82,10 @@ func main() {
 
 	// Configure CORS based on origins
 	corsConfig := cors.Config{
-		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
+		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token", "X-Requested-With"},
+		AllowMethods:  []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		ExposeHeaders: []string{"Content-Length", "Content-Type"},
+		MaxAge:        86400, // 24 hours
 	}
 
 	// If origins contain wildcard, don't use credentials

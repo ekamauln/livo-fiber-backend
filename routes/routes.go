@@ -31,7 +31,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	lostFoundController := controllers.NewLostFoundController(db)
 	returnController := controllers.NewReturnController(db)
 	returnPickedOrderController := controllers.NewPickedOrderController(db)
-	// complainController := controllers.NewComplainController()
+	complainController := controllers.NewComplainController(db)
 
 	// Public routes
 	api := app.Group("/api")
@@ -305,5 +305,9 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	pickedOrderRoutes := protected.Group("/picked-orders")
 	pickedOrderRoutes.Get("/", returnPickedOrderController.GetPickedOrders)
 	pickedOrderRoutes.Get("/:id", returnPickedOrderController.GetPickedOrder)
+
+	// Complain routes
+	complainRoutes := protected.Group("/complains")
+	complainRoutes.Get("/", complainController.GetComplains)
 
 }

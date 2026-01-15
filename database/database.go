@@ -109,9 +109,9 @@ func MigrateDatabase() error {
 		&models.Return{},
 		&models.ReturnDetail{},
 		&models.LostFound{},
-		// &models.Complain{},
-		// &models.ComplainUserDetail{},
-		// &models.ComplainProductDetail{},
+		&models.Complain{},
+		&models.ComplainUserDetail{},
+		&models.ComplainProductDetail{},
 	)
 
 	if err != nil {
