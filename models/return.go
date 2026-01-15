@@ -1,21 +1,23 @@
 package models
 
+import "time"
+
 type Return struct {
 	ID                uint   `gorm:"primaryKey" json:"id"`
 	NewTrackingNumber string `gorm:"not null;index;type:varchar(255)" json:"new_tracking_number"`
 
-	ChannelID      uint    `gorm:"not null" json:"channel_id"`
-	StoreID        uint    `gorm:"not null" json:"store_id"`
-	CreatedBy      uint    `gorm:"not null" json:"created_by"`
-	UpdatedBy      *uint   `gorm:"default:null" json:"updated_by"`
-	OrderGineeID   *string `gorm:"default:null;type:varchar(255)" json:"order_ginee_id"`
-	TrackingNumber *string `gorm:"default:null;index;type:varchar(255)" json:"old_tracking_number"`
-	ReturnType     *string `gorm:"default:null;type:varchar(100)" json:"return_type"`
-	ReturnReason   *string `gorm:"default:null;type:text" json:"return_reason"`
-	ReturnNumber   *string `gorm:"default:null;type:varchar(20)" json:"return_number"`
-	ScrapNumber    *string `gorm:"default:null;type:varchar(20)" json:"scrap_number"`
-	CreatedAt      string  `json:"created_at"`
-	UpdatedAt      string  `json:"updated_at"`
+	ChannelID      uint      `gorm:"not null" json:"channel_id"`
+	StoreID        uint      `gorm:"not null" json:"store_id"`
+	CreatedBy      uint      `gorm:"not null" json:"created_by"`
+	UpdatedBy      *uint     `gorm:"default:null" json:"updated_by"`
+	OrderGineeID   *string   `gorm:"default:null;type:varchar(255)" json:"order_ginee_id"`
+	TrackingNumber *string   `gorm:"default:null;index;type:varchar(255)" json:"old_tracking_number"`
+	ReturnType     *string   `gorm:"default:null;type:varchar(100)" json:"return_type"`
+	ReturnReason   *string   `gorm:"default:null;type:text" json:"return_reason"`
+	ReturnNumber   *string   `gorm:"default:null;type:varchar(20)" json:"return_number"`
+	ScrapNumber    *string   `gorm:"default:null;type:varchar(20)" json:"scrap_number"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 
 	ReturnDetails *[]ReturnDetail `gorm:"foreignKey:ReturnID" json:"return_details,omitempty"`
 	CreateUser    *User           `gorm:"foreignKey:CreatedBy" json:"create_user,omitempty"`
@@ -61,6 +63,16 @@ type ReturnDetailResponse struct {
 	Quantity   *int             `json:"quantity"`
 	Price      *int             `json:"price"`
 	Product    *ProductResponse `json:"product,omitempty"`
+}
+
+type MobileReturnResponse struct {
+	ID                uint   `json:"id"`
+	NewTrackingNumber string `json:"newTrackingNumber"`
+	ChannelID         string `json:"channelId"`
+	StoreID           string `json:"storeId"`
+	CreatedBy         string `json:"createdBy"`
+	CreatedAt         string `json:"createdAt"`
+	UpdatedAt         string `json:"updatedAt"`
 }
 
 // ToResponse converts Return model to ReturnResponse
@@ -126,9 +138,38 @@ func (r *Return) ToResponse() ReturnResponse {
 		ReturnReason:      r.ReturnReason,
 		ReturnNumber:      r.ReturnNumber,
 		ScrapNumber:       r.ScrapNumber,
-		CreatedAt:         r.CreatedAt,
-		UpdatedAt:         r.UpdatedAt,
+		CreatedAt:         r.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:         r.UpdatedAt.Format("2006-01-02 15:04:05"),
 		Details:           &details,
 		Order:             orderResponse,
+	}
+}
+
+func (r *Return) ToMobileResponse() MobileReturnResponse {
+	// Channel and Store names
+	var channelName string
+	if r.Channel != nil {
+		channelName = r.Channel.ChannelName
+	}
+
+	var storeName string
+	if r.Store != nil {
+		storeName = r.Store.StoreName
+	}
+
+	// User visual handlers
+	var createdBy string
+	if r.CreateUser != nil {
+		createdBy = r.CreateUser.FullName
+	}
+
+	return MobileReturnResponse{
+		ID:                r.ID,
+		NewTrackingNumber: r.NewTrackingNumber,
+		ChannelID:         channelName,
+		StoreID:           storeName,
+		CreatedBy:         createdBy,
+		CreatedAt:         r.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:         r.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}
 }

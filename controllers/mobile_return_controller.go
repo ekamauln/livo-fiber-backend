@@ -170,6 +170,7 @@ func (mrc *MobileReturnController) CreateMobileReturn(c fiber.Ctx) error {
 		NewTrackingNumber: req.NewTrackingNumber,
 		ChannelID:         req.ChannelID,
 		StoreID:           req.StoreID,
+		CreatedBy:         2,
 	}
 
 	if err := mrc.DB.Create(&mobileReturn).Error; err != nil {
@@ -179,9 +180,17 @@ func (mrc *MobileReturnController) CreateMobileReturn(c fiber.Ctx) error {
 		})
 	}
 
+	// Load related data for response
+	if err := mrc.DB.Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", mobileReturn.ID).First(&mobileReturn).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve created mobile return",
+		})
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Mobile Return created successfully",
-		Data:    mobileReturn.ToResponse(),
+		Data:    mobileReturn.ToMobileResponse(),
 	})
 }

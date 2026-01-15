@@ -158,6 +158,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	mobileReturns.Get("/channels", mobileChannelController.GetMobileChannels)
 	mobileReturns.Get("/stores", mobileStoreController.GetMobileStores)
 	mobileReturns.Get("/", mobileReturnController.GetMobileReturns)
+	mobileReturns.Get("/:id", mobileReturnController.GetMobileReturn)
+	mobileReturns.Post("/", mobileReturnController.CreateMobileReturn)
 
 	// CSRF token endpoint for web clients
 	auth.Get("/csrf-token", middleware.CSRFMiddleware(), func(c fiber.Ctx) error {
