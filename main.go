@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
+	"strings"
 
 	"time"
 
@@ -35,6 +35,24 @@ import (
 // @host 192.168.31.147:8040
 // @BasePath /
 // @schemes http https
+
+// matchOriginPattern checks if an origin matches a pattern with wildcards
+func matchOriginPattern(pattern, origin string) bool {
+	// Convert pattern to regex-like matching
+	// Replace * with a regex pattern that matches any characters except colon and slash
+	if !strings.Contains(pattern, "*") {
+		return false
+	}
+
+	// Split by wildcard
+	parts := strings.Split(pattern, "*")
+	if len(parts) != 2 {
+		return false
+	}
+
+	// Check if origin starts with the part before * and ends with the part after *
+	return strings.HasPrefix(origin, parts[0]) && strings.HasSuffix(origin, parts[1])
+}
 
 func main() {
 	// Load .env file
@@ -93,7 +111,21 @@ func main() {
 		corsConfig.AllowOrigins = []string{"*"}
 		corsConfig.AllowCredentials = false
 	} else {
-		corsConfig.AllowOrigins = cfg.CorsOrigins
+		// Use custom origin validator to support wildcard patterns
+		corsConfig.AllowOriginsFunc = func(origin string) bool {
+			// Check each configured origin
+			for _, allowedOrigin := range cfg.CorsOrigins {
+				// Exact match
+				if origin == allowedOrigin {
+					return true
+				}
+				// Pattern match (e.g., http://192.168.41.*:8081)
+				if matchOriginPattern(allowedOrigin, origin) {
+					return true
+				}
+			}
+			return false
+		}
 		corsConfig.AllowCredentials = true
 	}
 
@@ -107,9 +139,15 @@ func main() {
 	routes.SetupRoutes(app, cfg, database.DB)
 
 	// Start server
-	port := fmt.Sprintf(":%s", cfg.Port)
-	log.Printf("Server starting on port %s", port)
-	if err := app.Listen(port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	log.Println("════════════════════════════════════════════════════════════")
+	log.Printf("✓ Server ready on port %s", cfg.Port)
+	log.Printf("📊 Health check: %s/api/health", cfg.AppUrl)
+	log.Printf("📚 API documentation: %s/rapidoc", cfg.AppUrl)
+	log.Println("════════════════════════════════════════════════════════════")
+
+	// port := fmt.Sprintf(":%s", cfg.Port)
+	// log.Printf("Server starting on port %s", port)
+	if err := app.Listen(":" + cfg.Port); err != nil {
+		log.Fatalf("❌ Failed to start server: %v", err)
 	}
 }
