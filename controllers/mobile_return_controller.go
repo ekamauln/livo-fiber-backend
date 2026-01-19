@@ -56,7 +56,7 @@ func (mrc *MobileReturnController) GetMobileReturns(c fiber.Ctx) error {
 	endDateFormatted := endDate.Format("2006-01-02")
 
 	// Build base query
-	query := mrc.DB.Model(&models.Return{}).Where("created_at >= ? AND created_at <= ?", startDateFormatted, endDateFormatted)
+	query := mrc.DB.Model(&models.Return{}).Preload("Channel").Preload("Store").Preload("CreateUser").Where("created_at >= ? AND created_at <= ?", startDateFormatted, endDateFormatted)
 
 	// Parse search query parameter
 	search := c.Query("search")

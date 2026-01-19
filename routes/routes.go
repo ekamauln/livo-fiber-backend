@@ -35,6 +35,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	mobileChannelController := controllers.NewMobileChannelController(db)
 	mobileStoreController := controllers.NewMobileStoreController(db)
 	mobileReturnController := controllers.NewMobileReturnController(db)
+	mobileOrderController := controllers.NewMobileOrderController(db)
 
 	// Public routes
 	api := app.Group("/api")
@@ -324,4 +325,14 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	complainRoutes.Post("/", complainController.CreateComplain)
 	complainRoutes.Put("/:id", complainController.UpdateComplain)
 	complainRoutes.Put("/:id/check", complainController.UpdateComplainCheck)
+
+	// Mobile Orders routes
+	mobileOrders := api.Group("/mobile-orders")
+	mobileOrders.Get("/my-picking-orders", mobileOrderController.GetMyPickingOrders)
+	mobileOrders.Get("/my-picking-orders/:id", mobileOrderController.GetMyPickingOrder)
+	mobileOrders.Put("/my-picking-order/:id/complete", mobileOrderController.CompletePickingOrder)
+	mobileOrders.Put("/my-picking-order/:id/pending", mobileOrderController.PendingPickOrder)
+	mobileOrders.Put("/bulk-assign-picker", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), mobileOrderController.BulkAssignPicker)
+	mobileOrders.Get("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), mobileOrderController.GetMobilePickedOrders)
+	mobileOrders.Get("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), mobileOrderController.GetMobilePickedOrder)
 }

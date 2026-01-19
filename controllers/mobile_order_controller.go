@@ -1,0 +1,682 @@
+package controllers
+
+import (
+	"fmt"
+	"livo-fiber-backend/models"
+	"livo-fiber-backend/utils"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
+)
+
+type MobileOrderController struct {
+	DB *gorm.DB
+}
+
+func NewMobileOrderController(db *gorm.DB) *MobileOrderController {
+	return &MobileOrderController{DB: db}
+}
+
+// Request structs
+type MobileBulkAssignPickerRequest struct {
+	PickerID        uint     `json:"pickerId" validate:"required"`
+	TrackingNumbers []string `json:"trackingNumbers" validate:"required"`
+}
+
+type PendingPickRequest struct {
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+// Unique response structs
+type MobileBulkAssignPickerResponse struct {
+	Summary        BulkAssignSummary      `json:"summary"`
+	AssignedOrders []models.OrderResponse `json:"assignedOrders"`
+	SkippedOrders  []SkippedAssignment    `json:"skippedOrders"`
+	FailedOrders   []FailedAssignment     `json:"failedOrders"`
+}
+
+type BulkAssignSummary struct {
+	Total    int `json:"total"`
+	Assigned int `json:"assigned"`
+	Skipped  int `json:"skipped"`
+	Failed   int `json:"failed"`
+}
+
+type SkippedAssignment struct {
+	Index          int    `json:"index"`
+	TrackingNumber string `json:"tracking"`
+	Reason         string `json:"reason"`
+}
+
+type FailedAssignment struct {
+	Index          int    `json:"index"`
+	TrackingNumber string `json:"tracking"`
+	Error          string `json:"error"`
+}
+
+// GetMyPickingOrders retrieves all orders assigned to a picker
+// @Summary Get My Picking Orders
+// @Description Retrieve all orders assigned to a picker
+// @Tags Mobile Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.SuccessResponse{data=[]models.OrderResponse}
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-orders/my-picking-orders [get]
+func (moc *MobileOrderController) GetMyPickingOrders(c fiber.Ctx) error {
+	var orders []models.Order
+
+	// Get current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Base query to get orders assigned to the picker
+	query := moc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").
+		Where("picked_by = ? AND processing_status = ?", userID, "picking process").Order("created_at DESC").Find(&orders)
+
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// Load product details in order responses
+	for i := range orders {
+		for j := range orders[i].OrderDetails {
+			var product models.Product
+			if err := moc.DB.Where("sku = ?", orders[i].OrderDetails[j].SKU).First(&product).Error; err == nil {
+				orders[i].OrderDetails[j].Product = &product
+			}
+		}
+	}
+
+	// Include product details in order responses
+	orderResponses := make([]models.OrderResponse, len(orders))
+	for i, order := range orders {
+		orderResp := *order.ToOrderResponse()
+		orderResponses[i] = orderResp
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
+		Success: true,
+		Message: "Picking orders retrieved successfully",
+		Data:    orderResponses,
+		Total:   total,
+	})
+}
+
+// GetMyPickingOrder retrieves a specific order assigned to a picker
+// @Summary Get My Picking Order
+// @Description Retrieve a specific order assigned to a picker
+// @Tags Mobile Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "order ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.OrderResponse}
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-orders/my-picking-orders/{id} [get]
+func (moc *MobileOrderController) GetMyPickingOrder(c fiber.Ctx) error {
+	// Get current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Parse id parameter
+	id := c.Params("id")
+	var order models.Order
+
+	if err := moc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").
+		Where("id = ?", id).Where("picked_by = ?", userID).First(&order).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order not found",
+		})
+	}
+
+	// load product details in order response
+	for i := range order.OrderDetails {
+		var product models.Product
+		if err := moc.DB.Where("sku = ?", order.OrderDetails[i].SKU).First(&product).Error; err == nil {
+			order.OrderDetails[i].Product = &product
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Order retrieved successfully",
+		Data:    order.ToOrderResponse(),
+	})
+}
+
+// CompletePickingOrder marks an order as picked by the picker
+// @Summary Complete Picking Order
+// @Description Mark an order as picked by the picker
+// @Tags Mobile Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Order ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.OrderResponse}
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-orders/my-picking-order/{id}/complete [put]
+func (moc *MobileOrderController) CompletePickingOrder(c fiber.Ctx) error {
+	// Get current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Parse id parameter
+	id := c.Params("id")
+	var order models.Order
+	if err := moc.DB.Where("id = ?", id).Where("picked_by = ?", userID).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order with id " + id + " not found.",
+		})
+	}
+
+	// Start transaction
+	tx := moc.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Update order status to picking completed
+	now := time.Now()
+	userIDUint := uint(userID)
+	order.PickedBy = &userIDUint
+	order.PickedAt = &now
+	order.ProcessingStatus = "picking completed"
+
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order status: " + err.Error(),
+		})
+	}
+
+	// Create picked order log
+	pickedOrder := models.PickedOrder{
+		OrderID:  order.ID,
+		PickedBy: uint(userID),
+	}
+
+	if err := tx.Create(&pickedOrder).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to create picked order log: " + err.Error(),
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to commit transaction: " + err.Error(),
+		})
+	}
+
+	// Reload order with updated data
+	if err := moc.DB.Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").
+		Where("id = ?", order.ID).First(&order).Where("picked_by = ?", userID).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to reload order data: " + err.Error(),
+		})
+	}
+
+	// load product details in order response
+	for i := range order.OrderDetails {
+		var product models.Product
+		if err := moc.DB.Where("sku = ?", order.OrderDetails[i].SKU).First(&product).Error; err == nil {
+			order.OrderDetails[i].Product = &product
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Order marked as picked successfully",
+		Data:    order.ToOrderResponse(),
+	})
+}
+
+// PendingPickOrder marks an order as pending pick by the picker
+// @Summary Pending Pick Order
+// @Description Mark an order as pending pick by the picker
+// @Tags Mobile Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Order ID"
+// @Param request body PendingPickRequest true "Pending pick request with coordinator credentials"
+// @Success 200 {object} utils.SuccessResponse{data=models.OrderResponse}
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-orders/my-picking-order/{id}/pending [put]
+func (moc *MobileOrderController) PendingPickOrder(c fiber.Ctx) error {
+	//Param id parameter
+	id := c.Params("id")
+	var order models.Order
+	if err := moc.DB.Where("id = ?", id).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order with id " + id + " not found.",
+		})
+	}
+
+	// Parse request body
+	var req PendingPickRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Check if status is picking process
+	if order.ProcessingStatus != "picking process" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Order not in picking process status",
+		})
+	}
+
+	// Authenticate coordinator credentials
+	var coordinator models.User
+	if err := moc.DB.Preload("Roles").Where("username = ?", req.Username).First(&coordinator).Error; err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid coordinator credentials",
+		})
+	}
+
+	// Check password
+	if !utils.CheckPasswordHash(req.Password, coordinator.Password) {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid coordinator credentials",
+		})
+	}
+
+	// Check if user has developer, coordinator or superadmin role
+	hasCoordinatorRole := false
+	for _, role := range coordinator.Roles {
+		if role.RoleName == "developer" || role.RoleName == "coordinator" || role.RoleName == "superadmin" {
+			hasCoordinatorRole = true
+			break
+		}
+	}
+
+	if !hasCoordinatorRole {
+		return c.Status(fiber.StatusForbidden).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "User does not have required permissions",
+		})
+	}
+
+	// Get current developer, coordinator, or superadmin user ID that credentials belong to
+	coordinatorID := coordinator.ID
+
+	// Update order status to pending pick
+	now := time.Now()
+	order.PendingBy = &coordinatorID
+	order.PendingAt = &now
+	order.ProcessingStatus = "pending picking"
+
+	if err := moc.DB.Save(&order).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order status: " + err.Error(),
+		})
+	}
+
+	// Reload order with updated data
+	if err := moc.DB.Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").
+		Where("id = ?", order.ID).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to reload order data: " + err.Error(),
+		})
+	}
+
+	// load product details in order response
+	for i := range order.OrderDetails {
+		var product models.Product
+		if err := moc.DB.Where("sku = ?", order.OrderDetails[i].SKU).First(&product).Error; err == nil {
+			order.OrderDetails[i].Product = &product
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Order marked as pending pick successfully",
+		Data:    order.ToOrderResponse(),
+	})
+}
+
+// BulkAssignPicker handles bulk assignment of orders to a picker
+// @Summary Bulk Assign Picker
+// @Description Bulk assign orders to a picker
+// @Tags Mobile Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body MobileBulkAssignPickerRequest true "Bulk assign request with picker ID and tracking numbers"
+// @Success 200 {object} utils.SuccessResponse{data=MobileBulkAssignPickerResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-orders/bulk-assign-picker [put]
+func (moc *MobileOrderController) BulkAssignPicker(c fiber.Ctx) error {
+	// Parse request body
+	var req MobileBulkAssignPickerRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Get current user from context
+	assignerIDStr := c.Locals("userId").(string)
+	assignerID, err := strconv.ParseUint(assignerIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Verify if the picker exists
+	var picker models.User
+	if err := moc.DB.Where("id = ?", req.PickerID).First(&picker).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Picker with ID " + strconv.FormatUint(uint64(req.PickerID), 10) + " not found",
+		})
+	}
+
+	var assignedOrders []models.OrderResponse
+	var skippedOrders []SkippedAssignment
+	var failedOrders []FailedAssignment
+
+	assignerIDUint := uint(assignerID)
+	now := time.Now()
+
+	// Process each tracking number
+	for i, trackingNumber := range req.TrackingNumbers {
+		var order models.Order
+		// Find order by tracking number
+		if err := moc.DB.Where("tracking_number = ?", trackingNumber).First(&order).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				skippedOrders = append(skippedOrders, SkippedAssignment{
+					Index:          i,
+					TrackingNumber: trackingNumber,
+					Reason:         "Order not found",
+				})
+			} else {
+				failedOrders = append(failedOrders, FailedAssignment{
+					Index:          i,
+					TrackingNumber: trackingNumber,
+					Error:          "Failed to find order",
+				})
+			}
+			continue
+		}
+
+		// Validate order status
+		if order.EventStatus != nil && *order.EventStatus == "canceled" {
+			skippedOrders = append(skippedOrders, SkippedAssignment{
+				Index:          i,
+				TrackingNumber: trackingNumber,
+				Reason:         "Order is canceled",
+			})
+			continue
+		}
+
+		// Only allow assignment if order is "ready to pick" or "pending picking"
+		if order.ProcessingStatus != "ready to pick" && order.ProcessingStatus != "pending picking" {
+			skippedOrders = append(skippedOrders, SkippedAssignment{
+				Index:          i,
+				TrackingNumber: trackingNumber,
+				Reason:         "Order not in assignable status",
+			})
+			continue
+		}
+
+		// Update order with picker assignment
+		order.PickedBy = &req.PickerID
+		order.AssignedAt = &now
+		order.AssignedBy = &assignerIDUint
+		order.ProcessingStatus = "picking process"
+
+		if err := moc.DB.Save(&order).Error; err != nil {
+			failedOrders = append(failedOrders, FailedAssignment{
+				Index:          i,
+				TrackingNumber: trackingNumber,
+				Error:          err.Error(),
+			})
+			continue
+		}
+
+		// Load order details for response
+		if err := moc.DB.Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").
+			Where("id = ?", order.ID).First(&order).Error; err != nil {
+			failedOrders = append(failedOrders, FailedAssignment{
+				Index:          i,
+				TrackingNumber: trackingNumber,
+				Error:          "Failed to load order details",
+			})
+			continue
+		}
+
+		// load product details in order response
+		for i := range order.OrderDetails {
+			var product models.Product
+			if err := moc.DB.Where("sku = ?", order.OrderDetails[i].SKU).First(&product).Error; err == nil {
+				order.OrderDetails[i].Product = &product
+			}
+		}
+
+		assignedOrders = append(assignedOrders, *order.ToOrderResponse())
+	}
+
+	// Prepare summary
+	response := MobileBulkAssignPickerResponse{
+		Summary: BulkAssignSummary{
+			Total:    len(req.TrackingNumbers),
+			Assigned: len(assignedOrders),
+			Skipped:  len(skippedOrders),
+			Failed:   len(failedOrders),
+		},
+		AssignedOrders: assignedOrders,
+		SkippedOrders:  skippedOrders,
+		FailedOrders:   failedOrders,
+	}
+
+	// Determine response status and message
+	statusCode := fiber.StatusOK
+	message := "Bulk picker assignment completed"
+
+	if len(assignedOrders) == 0 {
+		if len(skippedOrders) > 0 {
+			message = "All orders were skipped"
+		} else {
+			statusCode = fiber.ErrBadRequest.Code
+			message = "No orders could be assigned"
+		}
+	} else if len(failedOrders) > 0 || len(skippedOrders) > 0 {
+		message = "Bulk picker assignment completed with some issues"
+	} else {
+		message = fmt.Sprintf("Successfully assigned %d order(s) to picker", len(assignedOrders))
+	}
+
+	return c.Status(statusCode).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
+	})
+}
+
+// GetMobilePickedOrders retrieves all picked orders for coordinator by mobile
+// @Summary Get Mobile Picked Orders
+// @Description Retrieve all picked orders for coordinator by mobile
+// @Tags Mobile Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Number of orders per page" default(10)
+// @Param search query string false "Search term for tracking number or ginee order ID"
+// @Success 200 {object} utils.SuccessTotaledResponse{data=[]models.OrderResponse}
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-orders [get]
+func (moc *MobileOrderController) GetMobilePickedOrders(c fiber.Ctx) error {
+	// Get current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	UserID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	offset := (page - 1) * limit
+
+	var pickedOrders []models.Order
+
+	// Base query to get picked orders
+	query := moc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("processing_status = ?", "picking process").Where("assigned_by = ?", UserID)
+
+	// Apply search filter if provided
+	search := c.Query("search", "")
+	if search != "" {
+		query = query.Where("orders.tracking_number ILIKE ? OR orders.order_ginee_id ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// Retrieve paginated results
+	query = query.Order("created_at DESC")
+	if err := query.Offset(offset).Limit(limit).Find(&pickedOrders).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve picked orders",
+		})
+	}
+
+	// Load product details in order responses
+	for i := range pickedOrders {
+		for j := range pickedOrders[i].OrderDetails {
+			var product models.Product
+			if err := moc.DB.Where("sku = ?", pickedOrders[i].OrderDetails[j].SKU).First(&product).Error; err == nil {
+				pickedOrders[i].OrderDetails[j].Product = &product
+			}
+		}
+	}
+
+	// Format response
+	pickedOrderList := make([]models.OrderResponse, len(pickedOrders))
+	for i, pickedOrder := range pickedOrders {
+		pickedOrderList[i] = *pickedOrder.ToOrderResponse()
+	}
+
+	// Build success message
+	message := "Picked orders retrieved successfully"
+	var filters []string
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
+		Success: true,
+		Message: message,
+		Data:    pickedOrderList,
+		Pagination: utils.Pagination{
+			Page:  page,
+			Limit: limit,
+			Total: total,
+		},
+	})
+}
+
+// GetMobilePickedOrder retrieves a specific picked order by ID
+// @Summary Get Mobile Picked Order
+// @Description Retrieve a specific picked order by ID
+// @Tags Mobile Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Picked Order ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.OrderResponse}
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-orders/{id} [get]
+func (moc *MobileOrderController) GetMobilePickedOrder(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	var pickedOrder models.Order
+	if err := moc.DB.Preload("OrderDetails").Preload("PickUser").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&pickedOrder).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Picked order with id " + id + " not found.",
+		})
+	}
+
+	// Load product details in order response
+	for i := range pickedOrder.OrderDetails {
+		var product models.Product
+		if err := moc.DB.Where("sku = ?", pickedOrder.OrderDetails[i].SKU).First(&product).Error; err == nil {
+			pickedOrder.OrderDetails[i].Product = &product
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Picked order retrieved successfully",
+		Data:    pickedOrder.ToOrderResponse(),
+	})
+}

@@ -108,11 +108,13 @@ func (o *Order) ToOrderResponse() *OrderResponse {
 		// Include product data if exists
 		if detail.Product != nil {
 			detailResp.Product = &ProductResponse{
-				SKU:      detail.Product.SKU,
-				Name:     detail.Product.Name,
-				Image:    detail.Product.Image,
-				Variant:  detail.Product.Variant,
-				Location: detail.Product.Location,
+				SKU:       detail.Product.SKU,
+				Name:      detail.Product.Name,
+				Image:     detail.Product.Image,
+				Variant:   detail.Product.Variant,
+				Location:  detail.Product.Location,
+				CreatedAt: detail.Product.CreatedAt.Format("02-01-2006 15:04:05"),
+				UpdatedAt: detail.Product.UpdatedAt.Format("02-01-2006 15:04:05"),
 			}
 		}
 		details[i] = detailResp

@@ -178,6 +178,16 @@ func (oc *OrderController) GetOrders(c fiber.Ctx) error {
 		})
 	}
 
+	// Load product details in order responses
+	for i := range orders {
+		for j := range orders[i].OrderDetails {
+			var product models.Product
+			if err := oc.DB.Where("sku = ?", orders[i].OrderDetails[j].SKU).First(&product).Error; err == nil {
+				orders[i].OrderDetails[j].Product = &product
+			}
+		}
+	}
+
 	// Format response
 	orderList := make([]models.OrderResponse, len(orders))
 	for i, order := range orders {
@@ -243,6 +253,14 @@ func (oc *OrderController) GetOrder(c fiber.Ctx) error {
 			Success: false,
 			Error:   "Order with id " + id + " not found.",
 		})
+	}
+
+	// Load product details in order response
+	for i := range order.OrderDetails {
+		var product models.Product
+		if err := oc.DB.Where("sku = ?", order.OrderDetails[i].SKU).First(&product).Error; err == nil {
+			order.OrderDetails[i].Product = &product
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
