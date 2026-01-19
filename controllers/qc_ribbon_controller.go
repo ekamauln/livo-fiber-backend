@@ -364,7 +364,7 @@ func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/ribbons/chart [get]
+// @Router /api/ribbons/qc-ribbons/chart [get]
 func (qcrc *QCRibbonController) GetChartQCRibbons(c fiber.Ctx) error {
 	// Get current month start and end dates
 	now := time.Now()

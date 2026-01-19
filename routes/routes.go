@@ -268,11 +268,11 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Ribbon routes
 	qcRibbonRoutes := protected.Group("/ribbons")
 	// QC ribbon routes
+	qcRibbonRoutes.Get("/qc-ribbons/chart", qcRibbonController.GetChartQCRibbons)
 	qcRibbonRoutes.Get("/qc-ribbons", qcRibbonController.GetQCRibbons)
 	qcRibbonRoutes.Get("/qc-ribbons/:id", qcRibbonController.GetQCRibbon)
 	qcRibbonRoutes.Post("/qc-ribbons", qcRibbonController.CreateQCRibbon)
-	// Chart QC ribbon routes
-	qcRibbonRoutes.Get("/chart", qcRibbonController.GetChartQCRibbons)
+
 	// Ribbon flow routes
 	qcRibbonRoutes.Get("/flows", ribbonFlowController.GetRibbonFlows)
 	qcRibbonRoutes.Get("/flows/:trackingNumber", ribbonFlowController.GetRibbonFlow)
@@ -280,11 +280,11 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// QCOnline routes
 	qcOnlineRoutes := protected.Group("/onlines")
 	// QC online routes
+	qcOnlineRoutes.Get("/qc-onlines/chart", qcOnlineController.GetChartQCOnlines)
 	qcOnlineRoutes.Get("/qc-onlines/", qcOnlineController.GetQCOnlines)
 	qcOnlineRoutes.Get("/qc-onlines/:id", qcOnlineController.GetQCOnline)
 	qcOnlineRoutes.Post("/qc-onlines/", qcOnlineController.CreateQCOnline)
-	// Chart QC online routes
-	qcOnlineRoutes.Get("/chart", qcOnlineController.GetChartQCOnlines)
+
 	// Online flow routes
 	qcOnlineRoutes.Get("/flows", onlineFlowController.GetOnlineFlows)
 	qcOnlineRoutes.Get("/flows/:trackingNumber", onlineFlowController.GetOnlineFlow)
@@ -292,6 +292,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Outbound routes
 	outboundRoutes := protected.Group("/outbounds")
 	outboundRoutes.Get("/", outboundController.GetOutbounds)
+	// Chart Outbound routes
+	outboundRoutes.Get("/chart", outboundController.GetChartOutbounds)
 	outboundRoutes.Get("/:id", outboundController.GetOutbound)
 	outboundRoutes.Post("/", outboundController.CreateOutbound)
 	outboundRoutes.Put("/:id", outboundController.UpdateOutbound)

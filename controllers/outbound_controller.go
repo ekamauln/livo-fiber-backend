@@ -34,6 +34,21 @@ type UpdateOutboundRequest struct {
 	ExpeditionColor string `json:"expeditionColor" validate:"required"`
 }
 
+// Unique response structs
+// OutboundsDailyCount represents the count of outbounds for a specific date
+type OutboundsDailyCount struct {
+	Date  time.Time `json:"date"`
+	Count int64     `json:"count"`
+}
+
+// OutboundsDailyCountResponse represents the response for daily outbound counts
+type OutboundsDailyCountResponse struct {
+	Month       string                `json:"month"`
+	Year        int                   `json:"year"`
+	DailyCounts []OutboundsDailyCount `json:"daily_counts"`
+	TotalCount  int                   `json:"total_count"`
+}
+
 // GetOutbounds retrieves a list of outbounds with pagination and search
 // @Summary Get Outbounds
 // @Description Retrieve a list of outbounds with pagination and search
@@ -392,5 +407,65 @@ func (oc *OutboundController) UpdateOutbound(c fiber.Ctx) error {
 		Success: true,
 		Message: "Outbound updated successfully",
 		Data:    outbound.ToResponse(),
+	})
+}
+
+// GetChartOutbounds retrieves daily outbound counts for the current month
+// @Summary Get Outbound Chart Data
+// @Description Retrieve daily outbound counts for the current month
+// @Tags Outbounds
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.SuccessResponse{data=OutboundsDailyCountResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/outbounds/chart [get]
+func (oc *OutboundController) GetChartOutbounds(c fiber.Ctx) error {
+	// Get current month start and end dates
+	now := time.Now()
+	currentYear, currentMonth, _ := now.Date()
+	currentLocation := now.Location()
+
+	// Start of the month
+	startOfMonth := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, currentLocation)
+
+	// First day of next month at 00:00:00 (to use as upper bound)
+	startOfNextMonth := startOfMonth.AddDate(0, 1, 0)
+
+	// Query to get daily counts for current month
+	var dailyCounts []OutboundsDailyCount
+
+	if err := oc.DB.Model(&models.Outbound{}).Select("DATE(created_at) as date, COUNT(*) as count").Where("created_at >= ? AND created_at < ?", startOfMonth, startOfNextMonth).Group("DATE(created_at)").Order("date ASC").Scan(&dailyCounts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve Outbound data",
+		})
+	}
+
+	// Get total count for the current month
+	var totalCount int64
+	if err := oc.DB.Model(&models.Outbound{}).Where("created_at >= ? AND created_at < ?", startOfMonth, startOfNextMonth).Count(&totalCount).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve total Outbound count",
+		})
+	}
+
+	// Format response
+	response := OutboundsDailyCountResponse{
+		Month:       currentMonth.String(),
+		Year:        currentYear,
+		DailyCounts: dailyCounts,
+		TotalCount:  int(totalCount),
+	}
+
+	message := "Outbound chart data " + currentMonth.String() + "  " + strconv.Itoa(currentYear) + " retrieved successfully"
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
 	})
 }

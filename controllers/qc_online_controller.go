@@ -364,7 +364,7 @@ func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
-// @Router /api/onlines/chart [get]
+// @Router /api/onlines/qc-onlines/chart [get]
 func (qcoc *QCOnlineController) GetChartQCOnlines(c fiber.Ctx) error {
 	// Get current month start and end dates
 	now := time.Now()
