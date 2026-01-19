@@ -32,6 +32,21 @@ type QCRibbonDetailRequest struct {
 	Quantity int  `json:"quantity" validate:"required,min=1"`
 }
 
+// Unique response structs
+// QcRibbonDailyCount represents the count of qc-ribbons for a specific date
+type QcRibbonDailyCount struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+}
+
+// QcRibbonsDailyCountResponse represents the response for daily qc-ribbon counts
+type QcRibbonsDailyCountResponse struct {
+	Month       string               `json:"month"`
+	Year        int                  `json:"year"`
+	DailyCounts []QcRibbonDailyCount `json:"dailyCounts"`
+	TotalCount  int                  `json:"totalCount"`
+}
+
 // GetQCRibbons retrieves a list of qc ribbons with pagination and search
 // @Summary Get QC Ribbons
 // @Description Retrieve a list of QC Ribbons with pagination and search
@@ -335,5 +350,65 @@ func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 		Success: true,
 		Message: "QC ribbon created successfully",
 		Data:    qcRibbon.ToResponse(),
+	})
+}
+
+// GetChartQcRibbons retrieves QC Ribbon data for charting
+// @Summary Get Chart QC Ribbons
+// @Description Retrieve QC Ribbon data for charting
+// @Tags Ribbons
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.SuccessResponse{data=QcRibbonsDailyCountResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/ribbons/chart [get]
+func (qcrc *QCRibbonController) GetChartQCRibbons(c fiber.Ctx) error {
+	// Get current month start and end dates
+	now := time.Now()
+	currentYear, currentMonth, _ := now.Date()
+	currentLocation := now.Location()
+
+	// Start of the month
+	startOfMonth := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, currentLocation)
+
+	// First day of next month at 00:00:00 (to use as upper bound)
+	startOfNextMonth := startOfMonth.AddDate(0, 1, 0)
+
+	// Query to get daily counts for current month
+	var dailyCounts []QcRibbonDailyCount
+
+	if err := qcrc.DB.Model(&models.QCRibbon{}).Select("DATE(created_at) as date, COUNT(*) as count").Where("created_at >= ? AND created_at < ?", startOfMonth, startOfNextMonth).Group("DATE(created_at)").Order("date ASC").Scan(&dailyCounts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve QC Ribbon data",
+		})
+	}
+
+	// Get total count for the current month
+	var totalCount int64
+	if err := qcrc.DB.Model(&models.QCRibbon{}).Where("created_at >= ? AND created_at < ?", startOfMonth, startOfNextMonth).Count(&totalCount).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve total QC Ribbon count",
+		})
+	}
+
+	// Format response
+	response := QcRibbonsDailyCountResponse{
+		Month:       currentMonth.String(),
+		Year:        currentYear,
+		DailyCounts: dailyCounts,
+		TotalCount:  int(totalCount),
+	}
+
+	message := "QC Ribbon chart data " + currentMonth.String() + "  " + strconv.Itoa(currentYear) + " retrieved successfully"
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
 	})
 }

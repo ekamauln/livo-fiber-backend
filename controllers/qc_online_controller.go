@@ -32,6 +32,21 @@ type QCOnlineDetailRequest struct {
 	Quantity int  `json:"quantity" validate:"required,min=1"`
 }
 
+// Unique response structs
+// QcOnlineDailyCount represents the count of qc-onlines for a specific date
+type QcOnlineDailyCount struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+}
+
+// QcOnlinesDailyCountResponse represents the response for daily qc-online counts
+type QcOnlinesDailyCountResponse struct {
+	Month       string               `json:"month"`
+	Year        int                  `json:"year"`
+	DailyCounts []QcOnlineDailyCount `json:"dailyCounts"`
+	TotalCount  int                  `json:"totalCount"`
+}
+
 // GetQCOnlines retrieves a list of qc onlines with pagination and search
 // @Summary Get QC Onlines
 // @Description Retrieve a list of QC Onlines with pagination and search
@@ -335,5 +350,65 @@ func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
 		Success: true,
 		Message: "QC online created successfully",
 		Data:    qcOnline.ToResponse(),
+	})
+}
+
+// GetChartQcOnlines retrieves QC Online data for charting
+// @Summary Get Chart QC Onlines
+// @Description Retrieve QC Online data for charting
+// @Tags Onlines
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.SuccessResponse{data=QcOnlinesDailyCountResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/onlines/chart [get]
+func (qcoc *QCOnlineController) GetChartQCOnlines(c fiber.Ctx) error {
+	// Get current month start and end dates
+	now := time.Now()
+	currentYear, currentMonth, _ := now.Date()
+	currentLocation := now.Location()
+
+	// Start of the month
+	startOfMonth := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, currentLocation)
+
+	// First day of next month at 00:00:00 (to use as upper bound)
+	startOfNextMonth := startOfMonth.AddDate(0, 1, 0)
+
+	// Query to get daily counts for current month
+	var dailyCounts []QcOnlineDailyCount
+
+	if err := qcoc.DB.Model(&models.QCOnline{}).Select("DATE(created_at) as date, COUNT(*) as count").Where("created_at >= ? AND created_at < ?", startOfMonth, startOfNextMonth).Group("DATE(created_at)").Order("date ASC").Scan(&dailyCounts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve QC Online data",
+		})
+	}
+
+	// Get total count for the current month
+	var totalCount int64
+	if err := qcoc.DB.Model(&models.QCOnline{}).Where("created_at >= ? AND created_at < ?", startOfMonth, startOfNextMonth).Count(&totalCount).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve total QC Online count",
+		})
+	}
+
+	// Format response
+	response := QcOnlinesDailyCountResponse{
+		Month:       currentMonth.String(),
+		Year:        currentYear,
+		DailyCounts: dailyCounts,
+		TotalCount:  int(totalCount),
+	}
+
+	message := "QC Online chart data " + currentMonth.String() + "  " + strconv.Itoa(currentYear) + " retrieved successfully"
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
 	})
 }
