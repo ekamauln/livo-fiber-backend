@@ -112,6 +112,7 @@ func MigrateDatabase() error {
 		&models.Complain{},
 		&models.ComplainUserDetail{},
 		&models.ComplainProductDetail{},
+		&models.UserFace{},
 	)
 
 	if err != nil {

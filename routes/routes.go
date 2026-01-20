@@ -196,7 +196,9 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	users.Delete("/:id", middleware.RoleMiddleware([]string{"developer"}), userController.DeleteUser)
 	users.Post("/:id/roles", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), userController.AssignRole)
 	users.Delete("/:id/roles", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), userController.RemoveRole)
+	users.Post("/:id/face-register", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), userController.RegisterUserFace)
 	users.Get("/:id/sessions", userController.GetSessions)
+	users.Post("/me/face-verify", userController.VerifyUserFace)
 
 	// Role routes
 	roles := protected.Group("/roles")

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"os"
 	"strconv"
 	"strings"
 
@@ -769,5 +770,183 @@ func (uc *UserController) GetSessions(c fiber.Ctx) error {
 		Success: true,
 		Message: "User sessions retrieved successfully",
 		Data:    sessionList,
+	})
+}
+
+// RegisterUserFace registers a new face for the user
+// @Summary Register User Face
+// @Description Register a new face for the user
+// @Tags Users
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "User ID"
+// @Param image formData file true "Face image to register"
+// @Success 201 {object} utils.SuccessResponse{data=models.UserFace}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/users/{id}/face-register [post]
+func (uc *UserController) RegisterUserFace(c fiber.Ctx) error {
+	// Parse id parameter
+	id := c.Params("id")
+	userID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Check if user exists
+	var user models.User
+	if err := uc.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "User with id " + id + " not found.",
+		})
+	}
+
+	// Get uploaded image
+	file, err := c.FormFile("image")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Image file is required",
+		})
+	}
+
+	// Validate mime type
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid image file type",
+		})
+	}
+
+	// Save temp file
+	tmpPath := fmt.Sprintf("tmp/face_%d.jpg", userID)
+	if err := c.SaveFile(file, tmpPath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to save image file",
+		})
+	}
+	defer os.Remove(tmpPath)
+
+	// Call deepface service to register face
+	if err := utils.SendToDeepFaceRegister(uint(userID), tmpPath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to register face with deepface service: %v", err),
+		})
+	}
+
+	// Create or update user face record in database
+	var userFace models.UserFace
+	if err := uc.DB.Where("user_id = ?", userID).First(&userFace).Error; err != nil {
+		userFace = models.UserFace{
+			UserID:   uint(userID),
+			IsActive: true,
+		}
+		if err := uc.DB.Create(&userFace).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Failed to register user face",
+			})
+		}
+	} else {
+		userFace.IsActive = true
+		if err := uc.DB.Save(&userFace).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Failed to update user face",
+			})
+		}
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "User face registered successfully",
+		Data:    userFace,
+	})
+}
+
+// VerifyUserFace verifies a user's face
+// @Summary Verify User Face
+// @Description Verify the logged-in user's face against their registered face
+// @Tags Users
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param image formData file true "Face image to verify"
+// @Success 200 {object} utils.SuccessResponse{data=utils.VerifyResult}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/users/me/face-verify [post]
+func (uc *UserController) VerifyUserFace(c fiber.Ctx) error {
+	// Get current user ID from context
+	currUserID := c.Locals("userId").(string)
+
+	// Get user from database
+	var user models.User
+	if err := uc.DB.Where("id = ?", currUserID).First(&user).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "User not found",
+		})
+	}
+
+	file, err := c.FormFile("image")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Image file is required",
+		})
+	}
+
+	// Validate mime type
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid image file type",
+		})
+	}
+
+	tmpPath := fmt.Sprintf("tmp/verify_%d.jpg", user.ID)
+	if err := c.SaveFile(file, tmpPath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to save image file",
+		})
+	}
+	defer os.Remove(tmpPath)
+
+	result, err := utils.SendToDeepFaceVerify(user.ID, tmpPath)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Face verification failed: %v", err),
+		})
+	}
+
+	if !result.Matched {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success":    false,
+			"error":      "Face verification failed - face does not match",
+			"matched":    result.Matched,
+			"userId":     result.UserID,
+			"confidence": result.Confidence,
+		})
+	}
+
+	// Attendance logging can be implemented here
+	return c.JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Face verified successfully",
+		Data:    result,
 	})
 }

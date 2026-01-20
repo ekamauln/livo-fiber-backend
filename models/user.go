@@ -27,6 +27,16 @@ type UserRole struct {
 	Role Role `gorm:"foreignKey:RoleID" json:"-"`
 }
 
+type UserFace struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"not null" json:"user_id"`
+	IsActive  bool      `gorm:"default:true" json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	User User `gorm:"foreignKey:UserID" json:"-"`
+}
+
 // UserResponse represents the user data returned in API responses
 type UserResponse struct {
 	ID        uint     `json:"id"`
