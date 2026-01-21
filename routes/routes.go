@@ -158,6 +158,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Attendances routes (public)
 	attendances := api.Group("/attendances")
 	attendances.Post("/search/face", attendanceController.SearchUsersByFace)
+	attendances.Post("/checkin/face", attendanceController.CheckInUserByFace)
+	attendances.Put("/checkout/face", attendanceController.CheckOutUserByFace)
 
 	// Mobile Returns routes (public)
 	mobileReturns := api.Group("/mobile-returns")
