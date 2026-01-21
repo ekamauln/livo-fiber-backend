@@ -36,6 +36,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	mobileStoreController := controllers.NewMobileStoreController(db)
 	mobileReturnController := controllers.NewMobileReturnController(db)
 	mobileOrderController := controllers.NewMobileOrderController(db)
+	attendanceController := controllers.NewAttendanceController(db)
 
 	// Public routes
 	api := app.Group("/api")
@@ -153,6 +154,10 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	auth.Post("/register", authController.Register)
 	auth.Post("/login", authController.Login)
 	auth.Post("/refresh", authController.RefreshToken)
+
+	// Attendances routes (public)
+	attendances := api.Group("/attendances")
+	attendances.Post("/search/face", attendanceController.SearchUsersByFace)
 
 	// Mobile Returns routes (public)
 	mobileReturns := api.Group("/mobile-returns")

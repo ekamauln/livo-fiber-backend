@@ -26,6 +26,12 @@ type VerifyResult struct {
 	Confidence float64 `json:"confidence"`
 }
 
+type SearchResult struct {
+	Matched    bool    `json:"matched"`
+	UserID     string  `json:"userId"`
+	Confidence float64 `json:"confidence"`
+}
+
 func SendToDeepFaceRegister(userID uint, imagePath string) error {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -141,6 +147,66 @@ func SendToDeepFaceVerify(userID uint, imagePath string) (*VerifyResult, error) 
 	fmt.Printf("DeepFace Response: %s\n", string(data))
 
 	var result VerifyResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse deepface response: %v, raw response: %s", err, string(data))
+	}
+
+	return &result, nil
+}
+
+func SendToDeepFaceSearch(imagePath string) (*SearchResult, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// image file
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="image"; filename="%s"`, filepath.Base(imagePath)))
+	h.Set("Content-Type", "image/jpeg")
+
+	part, err := writer.CreatePart(h)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return nil, err
+	}
+
+	writer.Close()
+
+	req, err := http.NewRequest("POST", os.Getenv("DEEPFACE_URL")+"/search", body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-SERVICE-KEY", os.Getenv("DEEPFACE_SERVICE_KEY"))
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("deepface search failed: %s", string(data))
+	}
+
+	// Log the response for debugging
+	fmt.Printf("DeepFace Search Response: %s\n", string(data))
+
+	var result SearchResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse deepface response: %v, raw response: %s", err, string(data))
 	}
