@@ -38,6 +38,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	mobileOrderController := controllers.NewMobileOrderController(db)
 	attendanceController := controllers.NewAttendanceController(db)
 	mobileAttendanceController := controllers.NewMobileAttendanceController(db)
+	locationController := controllers.NewLocationController(db)
 
 	// Public routes
 	api := app.Group("/api")
@@ -161,6 +162,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	attendances.Post("/search/face", attendanceController.SearchUsersByFace)
 	attendances.Post("/checkin/face", attendanceController.CheckInUserByFace)
 	attendances.Put("/checkout/face", attendanceController.CheckOutUserByFace)
+	attendances.Post("/checkin/manual", attendanceController.CheckInUserManual)
+	attendances.Put("/checkout/manual", attendanceController.CheckOutUserManual)
 
 	// Mobile Returns routes (public)
 	mobileReturns := api.Group("/mobile-returns")
@@ -356,4 +359,12 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	mobileOrders.Put("/bulk-assign-picker", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), mobileOrderController.BulkAssignPicker)
 	mobileOrders.Get("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), mobileOrderController.GetMobilePickedOrders)
 	mobileOrders.Get("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "coordinator"}), mobileOrderController.GetMobilePickedOrder)
+
+	// Location routes
+	locationRoutes := protected.Group("/locations")
+	locationRoutes.Get("/", locationController.GetLocations)
+	locationRoutes.Get("/:id", locationController.GetLocation)
+	locationRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.CreateLocation)
+	locationRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.UpdateLocation)
+	locationRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.DeleteLocation)
 }

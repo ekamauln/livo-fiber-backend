@@ -113,6 +113,8 @@ func MigrateDatabase() error {
 		&models.ComplainUserDetail{},
 		&models.ComplainProductDetail{},
 		&models.UserFace{},
+		&models.Location{}, // Must be before Attendance
+		&models.Attendance{},
 	)
 
 	if err != nil {
@@ -439,6 +441,38 @@ func SeedInitialUser() error {
 		}
 	}
 
+	return nil
+}
+
+func SeedInitialLocation() error {
+	log.Println("🌱 Seeding initial location data into the database...")
+
+	locations := []models.Location{
+		{Name: "Office (Tenaga)", Latitude: -7.948486, Longitude: 112.6486512},
+	}
+
+	for _, locationData := range locations {
+		var existingLocation models.Location
+		result := DB.Where("name = ?", locationData.Name).First(&existingLocation)
+
+		if result.Error == gorm.ErrRecordNotFound {
+			// Create new location
+			location := models.Location{
+				Name:      locationData.Name,
+				Latitude:  locationData.Latitude,
+				Longitude: locationData.Longitude,
+			}
+
+			if err := DB.Create(&location).Error; err != nil {
+				return fmt.Errorf("failed to create location %s: %w", locationData.Name, err)
+			}
+
+			log.Printf("✅ Location '%s' created successfully", locationData.Name)
+		} else {
+			log.Printf("ℹ️ Location '%s' already exists, skipping seed", locationData.Name)
+		}
+	}
+	log.Println("✅ Locations seeding completed successfully")
 	return nil
 }
 
