@@ -5,7 +5,9 @@ import (
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -19,7 +21,6 @@ func NewMobileAttendanceController(db *gorm.DB) *MobileAttendanceController {
 	return &MobileAttendanceController{DB: db}
 }
 
-// Unique response structs
 // Unique response structs
 type MobileCheckInResponse struct {
 	Matched    bool                 `json:"matched" example:"true"`
@@ -116,5 +117,631 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 		Success: true,
 		Message: "Face verified successfully",
 		Data:    result,
+	})
+}
+
+// MobileCheckInUser checks in a user via mobile with face verification and gps location verification from location ID (limited to 10 meters accuracy form registered location)
+// @Summary Mobile User Check-In
+// @Description Check-in for a user via mobile
+// @Tags Mobile Attendances
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param image formData file true "Face image for verification"
+// @Param location_id formData int true "Location ID for GPS verification"
+// @Param latitude formData float64 true "Latitude for GPS verification"
+// @Param longitude formData float64 true "Longitude for GPS verification"
+// @Param accuracy formData float64 true "GPS accuracy in meters"
+// @Success 200 {object} utils.SuccessResponse{data=MobileCheckInResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-attendances/checkin/face [post]
+func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) error {
+	// Get current user ID from context
+	currUserID := c.Locals("userId").(string)
+
+	// Get user from database
+	var user models.User
+	if err := mac.DB.Where("id = ?", currUserID).First(&user).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "User not found",
+		})
+	}
+
+	file, err := c.FormFile("image")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Image file is required",
+		})
+	}
+
+	// Validate mime type
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid image file type",
+		})
+	}
+
+	tmpPath := "tmp/search_face.jpg"
+	if err := c.SaveFile(file, tmpPath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to save image file",
+		})
+	}
+	defer os.Remove(tmpPath)
+
+	result, err := utils.SendToDeepFaceVerify(user.ID, tmpPath)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Face verification failed: %v", err),
+		})
+	}
+
+	if !result.Matched {
+		return c.JSON(fiber.Map{
+			"matched": false,
+		})
+	}
+
+	locationIDStr := c.FormValue("location_id")
+	if locationIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Location ID is required",
+		})
+	}
+
+	locationID, err := strconv.Atoi(locationIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid Location ID",
+		})
+	}
+
+	// Get user's current GPS coordinates
+	latitudeStr := c.FormValue("latitude")
+	longitudeStr := c.FormValue("longitude")
+	accuracyStr := c.FormValue("accuracy")
+
+	if latitudeStr == "" || longitudeStr == "" || accuracyStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Latitude, longitude, and accuracy are required",
+		})
+	}
+
+	latitude, err := strconv.ParseFloat(latitudeStr, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid latitude format",
+		})
+	}
+
+	longitude, err := strconv.ParseFloat(longitudeStr, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid longitude format",
+		})
+	}
+
+	accuracy, err := strconv.ParseFloat(accuracyStr, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid accuracy format",
+		})
+	}
+
+	// Verify location exists
+	var location models.Location
+	if err := mac.DB.Where("id = ?", locationID).First(&location).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Location not found",
+		})
+	}
+
+	// Calculate distance between user's GPS and registered location
+	distance := utils.CalculateDistance(latitude, longitude, location.Latitude, location.Longitude)
+
+	// Check if user is within 10 meters
+	if distance > 10.0 {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("You are too far from the check-in location. Distance: %.2f meters", distance),
+		})
+	}
+
+	// Fake GPS Detection
+	// Check user's recent attendance records for suspicious patterns
+	var recentAttendances []models.Attendance
+	mac.DB.Where("user_id = ?", user.ID).
+		Order("checked_in DESC").
+		Limit(5).
+		Find(&recentAttendances)
+
+	// 1. Check for sudden accuracy jumps
+	if len(recentAttendances) > 0 {
+		lastAccuracy := recentAttendances[0].Accuracy
+		accuracyDiff := accuracy - lastAccuracy
+		if accuracyDiff < 0 {
+			accuracyDiff = -accuracyDiff
+		}
+
+		// If accuracy suddenly jumps more than 50 meters, it's suspicious
+		if accuracyDiff > 50 {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Suspicious GPS behavior detected: Accuracy suddenly changed from %.1f to %.1f meters", lastAccuracy, accuracy),
+			})
+		}
+	}
+
+	// 2. Check for fixed accuracy (always the same value)
+	if len(recentAttendances) >= 3 {
+		allSame := true
+		for _, att := range recentAttendances[:3] {
+			if att.Accuracy != accuracy {
+				allSame = false
+				break
+			}
+		}
+
+		if allSame && accuracy > 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Suspicious GPS behavior detected: Accuracy values are suspiciously consistent",
+			})
+		}
+	}
+
+	// 3. Check for impossible speed
+	if len(recentAttendances) > 0 {
+		lastAttendance := recentAttendances[0]
+		timeDiff := time.Since(lastAttendance.CheckedIn).Seconds()
+
+		// Only check if last check-in was within the last hour
+		if timeDiff < 3600 && timeDiff > 60 {
+			distanceTraveled := utils.CalculateDistance(
+				latitude, longitude,
+				lastAttendance.Latitude, lastAttendance.Longitude,
+			)
+
+			// Calculate speed in meters per second
+			speed := distanceTraveled / timeDiff
+
+			// If speed is more than 50 m/s (180 km/h), it's suspicious
+			if speed > 50 {
+				return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+					Success: false,
+					Error:   fmt.Sprintf("Suspicious GPS behavior detected: Impossible travel speed (%.2f km/h)", speed*3.6),
+				})
+			}
+		}
+	}
+
+	// 4. Check if accuracy is too poor (more than 30 meters)
+	if accuracy > 30 {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("GPS accuracy is too poor: %.1f meters. Please ensure GPS is enabled and try again.", accuracy),
+		})
+	}
+
+	// Check if user already checked in today
+	var attendance models.Attendance
+	now := time.Now()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	if err := mac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "User already checked in today",
+		})
+	}
+
+	// Automatically determine status based on check-in time
+	checkedInTime := time.Now()
+
+	// Define time windows for fullday and halfday
+	fulldayCheckInStart := time.Date(now.Year(), now.Month(), now.Day(), 7, 0, 0, 0, now.Location())
+	fulldayCheckInEnd := time.Date(now.Year(), now.Month(), now.Day(), 8, 5, 0, 0, now.Location())
+	fulldayWorkStart := time.Date(now.Year(), now.Month(), now.Day(), 8, 0, 0, 0, now.Location())
+
+	halfdayCheckInStart := time.Date(now.Year(), now.Month(), now.Day(), 11, 30, 0, 0, now.Location())
+	halfdayCheckInEnd := time.Date(now.Year(), now.Month(), now.Day(), 12, 35, 0, 0, now.Location())
+	halfdayWorkStart := time.Date(now.Year(), now.Month(), now.Day(), 12, 30, 0, 0, now.Location())
+
+	var status string
+	var workStartTime time.Time
+	var lateMinutes int
+
+	// Check which time window the check-in falls into
+	if checkedInTime.After(fulldayCheckInStart.Add(-1*time.Minute)) && checkedInTime.Before(fulldayCheckInEnd.Add(1*time.Minute)) {
+		// Within fullday window (7:00 - 8:05)
+		status = "fullday"
+		workStartTime = fulldayWorkStart
+
+		if checkedInTime.After(fulldayCheckInEnd) {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Check-in time has expired for fullday shift. Deadline was %s", fulldayCheckInEnd.Format("15:04")),
+			})
+		}
+
+		if checkedInTime.After(workStartTime) {
+			lateMinutes = int(checkedInTime.Sub(workStartTime).Minutes())
+		}
+	} else if checkedInTime.After(halfdayCheckInStart.Add(-1*time.Minute)) && checkedInTime.Before(halfdayCheckInEnd.Add(1*time.Minute)) {
+		// Within halfday window (11:30 - 12:35)
+		status = "halfday"
+		workStartTime = halfdayWorkStart
+
+		if checkedInTime.After(halfdayCheckInEnd) {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Check-in time has expired for halfday shift. Deadline was %s", halfdayCheckInEnd.Format("15:04")),
+			})
+		}
+
+		if checkedInTime.After(workStartTime) {
+			lateMinutes = int(checkedInTime.Sub(workStartTime).Minutes())
+		}
+	} else {
+		// Not within any valid check-in window
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error: fmt.Sprintf("Not within valid check-in time. Fullday: %s-%s, Halfday: %s-%s",
+				fulldayCheckInStart.Format("15:04"), fulldayCheckInEnd.Format("15:04"),
+				halfdayCheckInStart.Format("15:04"), halfdayCheckInEnd.Format("15:04")),
+		})
+	}
+
+	// Create attendance record
+	newAttendance := models.Attendance{
+		UserID:     user.ID,
+		CheckedIn:  checkedInTime,
+		Checked:    true,
+		Status:     status,
+		Late:       lateMinutes,
+		LocationID: uint(locationID),
+		Latitude:   latitude,
+		Longitude:  longitude,
+		Accuracy:   accuracy,
+	}
+
+	if err := mac.DB.Create(&newAttendance).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to create attendance record",
+		})
+	}
+
+	// Reload with associations
+	mac.DB.Preload("User").Preload("Location").First(&newAttendance, newAttendance.ID)
+
+	return c.JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "User checked in successfully",
+		Data: MobileCheckInResponse{
+			Matched:    true,
+			UserID:     strconv.Itoa(int(user.ID)),
+			Confidence: result.Confidence,
+			User:       user.ToResponse(),
+			Attendance: &newAttendance,
+			Status:     status,
+			Late:       lateMinutes,
+		},
+	})
+}
+
+// MobileCheckOutUser checks out a user via mobile with face verification and gps location verification from location ID (limited to 10 meters accuracy form registered location)
+// @Summary Mobile User Check-Out
+// @Description Check-out for a user via mobile
+// @Tags Mobile Attendances
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param image formData file true "Face image for verification"
+// @Param location_id formData int true "Location ID for GPS verification"
+// @Param latitude formData float64 true "Latitude for GPS verification"
+// @Param longitude formData float64 true "Longitude for GPS verification"
+// @Param accuracy formData float64 true "GPS accuracy in meters"
+// @Success 200 {object} utils.SuccessResponse{data=MobileCheckOutResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/mobile-attendances/checkout/face [put]
+func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) error {
+	// Get current user ID from context
+	currUserID := c.Locals("userId").(string)
+
+	// Get user from database
+	var user models.User
+	if err := mac.DB.Where("id = ?", currUserID).First(&user).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "User not found",
+		})
+	}
+
+	file, err := c.FormFile("image")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Image file is required",
+		})
+	}
+
+	// Validate mime type
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid image file type",
+		})
+	}
+
+	tmpPath := "tmp/search_face.jpg"
+	if err := c.SaveFile(file, tmpPath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to save image file",
+		})
+	}
+	defer os.Remove(tmpPath)
+
+	result, err := utils.SendToDeepFaceVerify(user.ID, tmpPath)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Face verification failed: %v", err),
+		})
+	}
+
+	if !result.Matched {
+		return c.JSON(fiber.Map{
+			"matched": false,
+		})
+	}
+
+	locationIDStr := c.FormValue("location_id")
+	if locationIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Location ID is required",
+		})
+	}
+
+	locationID, err := strconv.Atoi(locationIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid Location ID",
+		})
+	}
+
+	// Get user's current GPS coordinates
+	latitudeStr := c.FormValue("latitude")
+	longitudeStr := c.FormValue("longitude")
+	accuracyStr := c.FormValue("accuracy")
+
+	if latitudeStr == "" || longitudeStr == "" || accuracyStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Latitude, longitude, and accuracy are required",
+		})
+	}
+
+	latitude, err := strconv.ParseFloat(latitudeStr, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid latitude format",
+		})
+	}
+
+	longitude, err := strconv.ParseFloat(longitudeStr, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid longitude format",
+		})
+	}
+
+	accuracy, err := strconv.ParseFloat(accuracyStr, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid accuracy format",
+		})
+	}
+
+	// Verify location exists
+	var location models.Location
+	if err := mac.DB.Where("id = ?", locationID).First(&location).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Location not found",
+		})
+	}
+
+	// Calculate distance between user's GPS and registered location
+	distance := utils.CalculateDistance(latitude, longitude, location.Latitude, location.Longitude)
+
+	// Check if user is within 10 meters
+	if distance > 10.0 {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("You are too far from the check-in location. Distance: %.2f meters", distance),
+		})
+	}
+
+	// Fake GPS Detection
+	// Check user's recent attendance records for suspicious patterns
+	var recentAttendances []models.Attendance
+	mac.DB.Where("user_id = ?", user.ID).
+		Order("checked_in DESC").
+		Limit(5).
+		Find(&recentAttendances)
+
+	// 1. Check for sudden accuracy jumps
+	if len(recentAttendances) > 0 {
+		lastAccuracy := recentAttendances[0].Accuracy
+		accuracyDiff := accuracy - lastAccuracy
+		if accuracyDiff < 0 {
+			accuracyDiff = -accuracyDiff
+		}
+
+		// If accuracy suddenly jumps more than 50 meters, it's suspicious
+		if accuracyDiff > 50 {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Suspicious GPS behavior detected: Accuracy suddenly changed from %.1f to %.1f meters", lastAccuracy, accuracy),
+			})
+		}
+	}
+
+	// 2. Check for fixed accuracy (always the same value)
+	if len(recentAttendances) >= 3 {
+		allSame := true
+		for _, att := range recentAttendances[:3] {
+			if att.Accuracy != accuracy {
+				allSame = false
+				break
+			}
+		}
+
+		if allSame && accuracy > 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Suspicious GPS behavior detected: Accuracy values are suspiciously consistent",
+			})
+		}
+	}
+
+	// 3. Check for impossible speed
+	if len(recentAttendances) > 0 {
+		lastAttendance := recentAttendances[0]
+		timeDiff := time.Since(lastAttendance.CheckedIn).Seconds()
+
+		// Only check if last check-in was within the last hour
+		if timeDiff < 3600 && timeDiff > 60 {
+			distanceTraveled := utils.CalculateDistance(
+				latitude, longitude,
+				lastAttendance.Latitude, lastAttendance.Longitude,
+			)
+
+			// Calculate speed in meters per second
+			speed := distanceTraveled / timeDiff
+
+			// If speed is more than 50 m/s (180 km/h), it's suspicious
+			if speed > 50 {
+				return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+					Success: false,
+					Error:   fmt.Sprintf("Suspicious GPS behavior detected: Impossible travel speed (%.2f km/h)", speed*3.6),
+				})
+			}
+		}
+	}
+
+	// 4. Check if accuracy is too poor (more than 30 meters)
+	if accuracy > 30 {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("GPS accuracy is too poor: %.1f meters. Please ensure GPS is enabled and try again.", accuracy),
+		})
+	}
+
+	// Find today's attendance record
+	var attendance models.Attendance
+	now := time.Now()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+	if err := mac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "User has not checked in today",
+		})
+	}
+
+	// Automatically determine checkout behavior based on time
+	checkedOutTime := time.Now()
+
+	// Define checkout time windows
+	earlyCheckOut := time.Date(now.Year(), now.Month(), now.Day(), 12, 30, 0, 0, now.Location())
+	earlyCheckOutEnd := earlyCheckOut.Add(5 * time.Minute)
+
+	regularCheckOut := time.Date(now.Year(), now.Month(), now.Day(), 17, 0, 0, 0, now.Location())
+	regularCheckOutStart := regularCheckOut.Add(-5 * time.Minute) // Allow 5 minutes before
+
+	overtime := 0
+
+	// Check if checking out around 12:30 (early checkout)
+	if checkedOutTime.After(earlyCheckOut.Add(-1*time.Minute)) && checkedOutTime.Before(earlyCheckOutEnd.Add(1*time.Minute)) {
+		// Update status from fullday to halfday, no overtime
+		attendance.Status = "halfday"
+		attendance.CheckedOut = &checkedOutTime
+		attendance.Checked = false
+		attendance.Overtime = 0
+	} else if checkedOutTime.After(regularCheckOutStart) {
+		// Checking out around 17:00 or later
+		switch attendance.Status {
+		case "halfday":
+			// Halfday status: just update checkout time, no overtime
+			attendance.CheckedOut = &checkedOutTime
+			attendance.Checked = false
+			attendance.Overtime = 0
+		case "fullday":
+			// Fullday status: update checkout and calculate overtime if after 17:00
+			attendance.CheckedOut = &checkedOutTime
+			attendance.Checked = false
+
+			if checkedOutTime.After(regularCheckOut) {
+				overtime = int(checkedOutTime.Sub(regularCheckOut).Minutes())
+			}
+			attendance.Overtime = overtime
+		}
+	} else {
+		// Not within valid checkout windows
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error: fmt.Sprintf("Not within valid check-out time. Early checkout: %s-%s, Regular checkout: %s onwards",
+				earlyCheckOut.Format("15:04"), earlyCheckOutEnd.Format("15:04"),
+				regularCheckOutStart.Format("15:04")),
+		})
+	}
+
+	// Update attendance record
+	if err := mac.DB.Save(&attendance).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update attendance record",
+		})
+	}
+
+	return c.JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "User checked out successfully",
+		Data: MobileCheckOutResponse{
+			Matched:    true,
+			UserID:     result.UserID,
+			Confidence: result.Confidence,
+			User:       user.ToResponse(),
+			Attendance: &attendance,
+			Status:     attendance.Status,
+			Overtime:   overtime,
+		},
 	})
 }

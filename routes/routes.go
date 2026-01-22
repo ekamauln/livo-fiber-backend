@@ -200,6 +200,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Mobile Attendance routes
 	mobileAttendance := protected.Group("/mobile-attendances")
 	mobileAttendance.Post("/face-verify", mobileAttendanceController.VerifyUserFace)
+	mobileAttendance.Post("/checkin/face", mobileAttendanceController.MobileCheckInUserByFace)
+	mobileAttendance.Put("/checkout/face", mobileAttendanceController.MobileCheckOutUserByFace)
 
 	// User routes
 	users := protected.Group("/users")
@@ -367,4 +369,5 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	locationRoutes.Post("/", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.CreateLocation)
 	locationRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.UpdateLocation)
 	locationRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.DeleteLocation)
+
 }
