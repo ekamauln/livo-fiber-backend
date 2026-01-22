@@ -37,6 +37,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	mobileReturnController := controllers.NewMobileReturnController(db)
 	mobileOrderController := controllers.NewMobileOrderController(db)
 	attendanceController := controllers.NewAttendanceController(db)
+	mobileAttendanceController := controllers.NewMobileAttendanceController(db)
 
 	// Public routes
 	api := app.Group("/api")
@@ -193,6 +194,10 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	protectedAuth := protected.Group("/auth")
 	protectedAuth.Post("/logout", authController.Logout)
 
+	// Mobile Attendance routes
+	mobileAttendance := protected.Group("/mobile-attendances")
+	mobileAttendance.Post("/face-verify", mobileAttendanceController.VerifyUserFace)
+
 	// User routes
 	users := protected.Group("/users")
 	users.Get("/", userController.GetUsers)
@@ -205,7 +210,6 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	users.Delete("/:id/roles", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), userController.RemoveRole)
 	users.Post("/:id/face-register", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), userController.RegisterUserFace)
 	users.Get("/:id/sessions", userController.GetSessions)
-	users.Post("/me/face-verify", userController.VerifyUserFace)
 
 	// Role routes
 	roles := protected.Group("/roles")
@@ -312,6 +316,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	reportRoutes.Get("/boxes", reportController.GetBoxReports)
 	reportRoutes.Get("/outbounds", reportController.GetOutboundReports)
 	reportRoutes.Get("/returns", reportController.GetReturnReports)
+	reportRoutes.Get("/complains", reportController.GetComplainReports)
+	reportRoutes.Get("/user-fees", reportController.GetUserFeeReports)
 
 	// Lost and Found routes
 	lostFoundRoutes := protected.Group("/lost-founds")

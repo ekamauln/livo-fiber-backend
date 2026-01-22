@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,12 +47,37 @@ type BoxCountReportsListResponse struct {
 
 type OutboundReportsListResponse struct {
 	Outbounds []models.OutboundResponse `json:"outbounds"`
-	Total     int
 }
 
 type ReturnReportsListResponse struct {
 	Returns []models.ReturnResponse `json:"returns"`
-	Total   int
+}
+
+type ComplaintReportsListResponse struct {
+	Complaints []models.ComplainResponse `json:"complains"`
+}
+
+type ComplainDetailInReport struct {
+	ComplainID        uint   `json:"complainId"`
+	ComplainCode      string `json:"complainCode"`
+	Tracking          string `json:"tracking"`
+	OrderGineeID      string `json:"orderGineeId"`
+	FeeCharge         uint   `json:"feeCharge"`
+	ComplainUpdatedAt string `json:"complainUpdatedAt"`
+}
+
+type UserFeeReportWithDetails struct {
+	UserID          uint                     `json:"userId"`
+	Username        string                   `json:"username"`
+	FullName        string                   `json:"fullName"`
+	Email           string                   `json:"email"`
+	TotalComplaints int                      `json:"totalComplaints"`
+	TotalFeeCharge  uint                     `json:"totalFeeCharge"`
+	ComplainDetails []ComplainDetailInReport `json:"complainDetails"`
+}
+
+type UserFeeReportsWithDetailsListResponse struct {
+	Reports []UserFeeReportWithDetails `json:"reports"`
 }
 
 // BuildBoxUsageDetails retrieves detailed usage for a specific box
@@ -65,7 +91,7 @@ func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate 
 		BoxName        string
 		Quantity       int
 		FullName       string
-		CreatedAt      string
+		CreatedAt      time.Time
 	}
 
 	var ribbonResults []RibbonResult
@@ -95,7 +121,7 @@ func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate 
 			BoxName:        r.BoxName,
 			Quantity:       r.Quantity,
 			QcBy:           r.FullName,
-			CreatedAt:      r.CreatedAt,
+			CreatedAt:      r.CreatedAt.Format("02-01-2006 15:04:05"),
 			Source:         "ribbon",
 		})
 	}
@@ -107,7 +133,7 @@ func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate 
 		BoxName        string
 		Quantity       int
 		FullName       string
-		CreatedAt      string
+		CreatedAt      time.Time
 	}
 
 	var onlineResults []OnlineResult
@@ -137,7 +163,7 @@ func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate 
 			BoxName:        r.BoxName,
 			Quantity:       r.Quantity,
 			QcBy:           r.FullName,
-			CreatedAt:      r.CreatedAt,
+			CreatedAt:      r.CreatedAt.Format("02-01-2006 15:04:05"),
 			Source:         "online",
 		})
 	}
@@ -475,5 +501,276 @@ func (rc *ReportController) GetReturnReports(c fiber.Ctx) error {
 		Message: message,
 		Data:    response,
 		Total:   total,
+	})
+}
+
+// GetComplaintReports generates complaint reports
+// @Summary Get Complaint Reports
+// @Description Generate complaint reports with optional filters
+// @Tags Reports
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param date query string false "Filter by date (YYYY-MM-DD format)"
+// @Success 200 {object} utils.SuccessTotaledResponse{data=ComplaintReportsListResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/reports/complains [get]
+func (rc *ReportController) GetComplainReports(c fiber.Ctx) error {
+	var complaints []models.Complain
+
+	// Build base query
+	query := rc.DB.Model(&models.Complain{}).Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Order("created_at DESC")
+
+	// Apply date filters if provided
+	date := c.Query("date")
+	if date != "" {
+		// Parse date dan validate format
+		if parsedDate, err := time.Parse("2006-01-02", date); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid date format. Use YYYY-MM-DD.",
+			})
+		} else {
+			// Filter for the entire day (from 00:00:00 to 23:59:59)
+			startOfDay := parsedDate.Format("2006-01-02 00:00:00")
+			endOfDay := parsedDate.AddDate(0, 0, 1).Format("2006-01-02 00:00:00")
+			query = query.Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay)
+		}
+	}
+
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// Execute query
+	if err := query.Find(&complaints).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve complaint reports",
+		})
+	}
+
+	// Format response
+	complaintList := make([]models.ComplainResponse, len(complaints))
+	for i, complaint := range complaints {
+		complaintList[i] = *complaint.ToComplainResponse()
+	}
+
+	response := ComplaintReportsListResponse{
+		Complaints: complaintList,
+	}
+
+	// Build success message
+	message := "Complaint reports retrieved successfully"
+	var filters []string
+
+	if date != "" {
+		filters = append(filters, "date: "+date)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
+		Total:   total,
+	})
+}
+
+// GetUserFeeReports generates user fee reports
+// @Summary Get User Fee Reports
+// @Description Generate user fee reports with optional filters
+// @Tags Reports
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number for pagination (default is 1)"
+// @Param limit query int false "Number of items per page for pagination (default is 10)"
+// @Param startDate query string false "Filter by start date (YYYY-MM-DD format)"
+// @Param endDate query string false "Filter by end date (YYYY-MM-DD format)"
+// @Param userId query string false "Filter term for user ID"
+// @Success 200 {object} utils.SuccessPaginatedResponse{data=UserFeeReportsWithDetailsListResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/reports/user-fees [get]
+func (rc *ReportController) GetUserFeeReports(c fiber.Ctx) error {
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	offset := (page - 1) * limit
+
+	// Parse filter parameters
+	userId := c.Query("userId", "")
+	startDate := c.Query("startDate", "")
+	endDate := c.Query("endDate", "")
+
+	// Validate date formats
+	if startDate != "" {
+		if _, err := time.Parse("2006-01-02", startDate); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid startDate format. Use YYYY-MM-DD.",
+			})
+		}
+	}
+	if endDate != "" {
+		if _, err := time.Parse("2006-01-02", endDate); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid endDate format. Use YYYY-MM-DD.",
+			})
+		}
+	}
+
+	// Build query to get user summaries
+	type UserSummary struct {
+		UserID          uint
+		Username        string
+		FullName        string
+		Email           string
+		TotalComplaints int
+		TotalFeeCharge  uint
+	}
+
+	summaryQuery := rc.DB.Table("complain_user_details").
+		Select("users.id as user_id, users.username, users.full_name, users.email, COUNT(DISTINCT complain_user_details.complain_id) as total_complaints, COALESCE(SUM(complain_user_details.fee_charge), 0) as total_fee_charge").
+		Joins("LEFT JOIN users ON users.id = complain_user_details.user_id").
+		Joins("LEFT JOIN complains ON complains.id = complain_user_details.complain_id")
+
+	// Apply date filters on complains table
+	if startDate != "" {
+		summaryQuery = summaryQuery.Where("complains.updated_at >= ?", startDate+" 00:00:00")
+	}
+	if endDate != "" {
+		summaryQuery = summaryQuery.Where("complains.updated_at <= ?", endDate+" 23:59:59")
+	}
+
+	// Apply user filter
+	if userId != "" {
+		summaryQuery = summaryQuery.Where("complain_user_details.user_id = ?", userId)
+	}
+
+	summaryQuery = summaryQuery.Group("users.id, users.username, users.full_name, users.email").
+		Order("total_fee_charge DESC")
+
+	// Get total count
+	var totalCount int64
+	countQuery := rc.DB.Table("(?) as summaries", summaryQuery)
+	if err := countQuery.Count(&totalCount).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to count user fee reports",
+		})
+	}
+
+	// Apply pagination
+	var summaries []UserSummary
+	if err := summaryQuery.Limit(limit).Offset(offset).Scan(&summaries).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve user fee reports",
+		})
+	}
+
+	// Build detailed reports for each user
+	var reports []UserFeeReportWithDetails
+	for _, summary := range summaries {
+		// Get detailed complain information for this user
+		detailQuery := rc.DB.Table("complain_user_details").
+			Select("complain_user_details.complain_id, complains.code as complain_code, complains.tracking_number as tracking, complains.order_ginee_id, complain_user_details.fee_charge, complains.updated_at as complain_updated_at").
+			Joins("LEFT JOIN complains ON complains.id = complain_user_details.complain_id").
+			Where("complain_user_details.user_id = ?", summary.UserID)
+
+		// Apply same date filters
+		if startDate != "" {
+			detailQuery = detailQuery.Where("complains.updated_at >= ?", startDate+" 00:00:00")
+		}
+		if endDate != "" {
+			detailQuery = detailQuery.Where("complains.updated_at <= ?", endDate+" 23:59:59")
+		}
+
+		detailQuery = detailQuery.Order("complains.updated_at DESC")
+
+		// Scan into temporary struct with time.Time
+		type ComplainDetailRaw struct {
+			ComplainID        uint
+			ComplainCode      string
+			Tracking          string
+			OrderGineeID      string
+			FeeCharge         uint
+			ComplainUpdatedAt time.Time
+		}
+
+		var rawDetails []ComplainDetailRaw
+		if err := detailQuery.Scan(&rawDetails).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Failed to retrieve complain details",
+			})
+		}
+
+		// Format the dates
+		var details []ComplainDetailInReport
+		for _, raw := range rawDetails {
+			details = append(details, ComplainDetailInReport{
+				ComplainID:        raw.ComplainID,
+				ComplainCode:      raw.ComplainCode,
+				Tracking:          raw.Tracking,
+				OrderGineeID:      raw.OrderGineeID,
+				FeeCharge:         raw.FeeCharge,
+				ComplainUpdatedAt: raw.ComplainUpdatedAt.Format("02-01-2006 15:04:05"),
+			})
+		}
+
+		report := UserFeeReportWithDetails{
+			UserID:          summary.UserID,
+			Username:        summary.Username,
+			FullName:        summary.FullName,
+			Email:           summary.Email,
+			TotalComplaints: summary.TotalComplaints,
+			TotalFeeCharge:  summary.TotalFeeCharge,
+			ComplainDetails: details,
+		}
+
+		reports = append(reports, report)
+	}
+
+	response := UserFeeReportsWithDetailsListResponse{
+		Reports: reports,
+	}
+
+	// Build success message
+	message := "User fee reports retrieved successfully"
+	var filters []string
+
+	if startDate != "" {
+		filters = append(filters, "startDate: "+startDate)
+	}
+	if endDate != "" {
+		filters = append(filters, "endDate: "+endDate)
+	}
+	if userId != "" {
+		filters = append(filters, "userId: "+userId)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
+		Success: true,
+		Message: message,
+		Data:    response,
+		Pagination: utils.Pagination{
+			Page:  page,
+			Limit: limit,
+			Total: totalCount,
+		},
 	})
 }
