@@ -93,6 +93,14 @@ func (a *Attendance) ToResponse() *AttendanceResponse {
 	longitudeStr := strconv.FormatFloat(a.Longitude, 'f', 6, 64)
 	accuracyStr := strconv.FormatFloat(a.Accuracy, 'f', 2, 64)
 
+	// Handle CheckedOut nil pointer
+	var checkedOutStr string
+	if a.CheckedOut != nil {
+		checkedOutStr = a.CheckedOut.Format("02-01-2006 15:04:05")
+	} else {
+		checkedOutStr = "Not Checked Out Yet"
+	}
+
 	return &AttendanceResponse{
 		ID:         a.ID,
 		User:       userName,
@@ -104,7 +112,7 @@ func (a *Attendance) ToResponse() *AttendanceResponse {
 		Late:       a.Late,
 		Overtime:   a.Overtime,
 		CheckedIn:  a.CheckedIn.Format("02-01-2006 15:04:05"),
-		CheckedOut: a.CheckedOut.Format("02-01-2006 15:04:05"),
+		CheckedOut: checkedOutStr,
 		Checked:    a.Checked,
 	}
 }

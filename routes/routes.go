@@ -370,4 +370,9 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	locationRoutes.Put("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.UpdateLocation)
 	locationRoutes.Delete("/:id", middleware.RoleMiddleware([]string{"developer", "superadmin", "hrd"}), locationController.DeleteLocation)
 
+	// Attendance management routes (protected - developer and hrd only)
+	attendanceManagement := protected.Group("/attendances")
+	attendanceManagement.Get("/", middleware.RoleMiddleware([]string{"developer", "hrd"}), attendanceController.GetAttendances)
+	attendanceManagement.Get("/:id", middleware.RoleMiddleware([]string{"developer", "hrd"}), attendanceController.GetAttendanceByID)
+
 }

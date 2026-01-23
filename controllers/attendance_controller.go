@@ -5,6 +5,7 @@ import (
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,39 +35,39 @@ type CheckOutManualRequest struct {
 
 // Unique response structs
 type CheckInResponse struct {
-	Matched    bool                 `json:"matched" example:"true"`
-	UserID     string               `json:"userId" example:"1"`
-	Confidence float64              `json:"confidence" example:"0.95"`
-	User       *models.UserResponse `json:"user"`
-	Attendance *models.Attendance   `json:"attendance"`
-	Status     string               `json:"status" example:"fullday"`
-	Late       int                  `json:"late" example:"2"`
+	Matched    bool                       `json:"matched" example:"true"`
+	UserID     string                     `json:"userId" example:"1"`
+	Confidence float64                    `json:"confidence" example:"0.95"`
+	User       *models.UserResponse       `json:"user"`
+	Attendance *models.AttendanceResponse `json:"attendance"`
+	Status     string                     `json:"status" example:"fullday"`
+	Late       int                        `json:"late" example:"2"`
 }
 
 type CheckInManualResponse struct {
-	Matched    bool                 `json:"matched" example:"true"`
-	User       *models.UserResponse `json:"user"`
-	Attendance *models.Attendance   `json:"attendance"`
-	Status     string               `json:"status" example:"fullday"`
-	Late       int                  `json:"late" example:"2"`
+	Matched    bool                       `json:"matched" example:"true"`
+	User       *models.UserResponse       `json:"user"`
+	Attendance *models.AttendanceResponse `json:"attendance"`
+	Status     string                     `json:"status" example:"fullday"`
+	Late       int                        `json:"late" example:"2"`
 }
 
 type CheckOutResponse struct {
-	Matched    bool                 `json:"matched" example:"true"`
-	UserID     string               `json:"userId" example:"1"`
-	Confidence float64              `json:"confidence" example:"0.95"`
-	User       *models.UserResponse `json:"user"`
-	Attendance *models.Attendance   `json:"attendance"`
-	Status     string               `json:"status" example:"halfday"`
-	Overtime   int                  `json:"overtime" example:"30"`
+	Matched    bool                       `json:"matched" example:"true"`
+	UserID     string                     `json:"userId" example:"1"`
+	Confidence float64                    `json:"confidence" example:"0.95"`
+	User       *models.UserResponse       `json:"user"`
+	Attendance *models.AttendanceResponse `json:"attendance"`
+	Status     string                     `json:"status" example:"halfday"`
+	Overtime   int                        `json:"overtime" example:"30"`
 }
 
 type CheckOutManualResponse struct {
-	Matched    bool                 `json:"matched" example:"true"`
-	User       *models.UserResponse `json:"user"`
-	Attendance *models.Attendance   `json:"attendance"`
-	Status     string               `json:"status" example:"halfday"`
-	Overtime   int                  `json:"overtime" example:"30"`
+	Matched    bool                       `json:"matched" example:"true"`
+	User       *models.UserResponse       `json:"user"`
+	Attendance *models.AttendanceResponse `json:"attendance"`
+	Status     string                     `json:"status" example:"halfday"`
+	Overtime   int                        `json:"overtime" example:"30"`
 }
 
 // SearchUsersByFace searches for users by face image
@@ -289,6 +290,9 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload attendace data and related data
+	ac.DB.Preload("User").Preload("Location").Where("id = ?", newAttendance.ID).First(&newAttendance)
+
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked in successfully",
@@ -297,7 +301,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 			UserID:     result.UserID,
 			Confidence: result.Confidence,
 			User:       user.ToResponse(),
-			Attendance: &newAttendance,
+			Attendance: newAttendance.ToResponse(),
 			Status:     status,
 			Late:       lateMinutes,
 		},
@@ -432,6 +436,9 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload attendace data and related data
+	ac.DB.Preload("User").Preload("Location").Where("id = ?", attendance.ID).First(&attendance)
+
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked out successfully",
@@ -440,7 +447,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 			UserID:     result.UserID,
 			Confidence: result.Confidence,
 			User:       user.ToResponse(),
-			Attendance: &attendance,
+			Attendance: attendance.ToResponse(),
 			Status:     attendance.Status,
 			Overtime:   overtime,
 		},
@@ -577,13 +584,16 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload attendace data and related data
+	ac.DB.Preload("User").Preload("Location").Where("id = ?", newAttendance.ID).First(&newAttendance)
+
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked in successfully",
 		Data: CheckInManualResponse{
 			Matched:    true,
 			User:       user.ToResponse(),
-			Attendance: &newAttendance,
+			Attendance: newAttendance.ToResponse(),
 			Status:     status,
 			Late:       lateMinutes,
 		},
@@ -697,15 +707,164 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 		})
 	}
 
+	// Reload attendace data and related data
+	ac.DB.Preload("User").Preload("Location").Where("id = ?", attendance.ID).First(&attendance)
+
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked out successfully",
 		Data: CheckOutManualResponse{
 			Matched:    true,
 			User:       user.ToResponse(),
-			Attendance: &attendance,
+			Attendance: attendance.ToResponse(),
 			Status:     attendance.Status,
 			Overtime:   overtime,
 		},
+	})
+}
+
+// GetAttendances retrieves all attendance records
+// @Summary Get All Attendances
+// @Description Retrieve all attendance records with pagination and search
+// @Tags Attendances
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Number of records per page" default(10)
+// @Param startDate query string false "Start date (YYYY-MM-DD format)"
+// @Param endDate query string false "End date (YYYY-MM-DD format)"
+// @Param search query string false "Search term for user name or username"
+// @Success 200 {object} utils.SuccessResponse{data=[]models.AttendanceResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/attendances [get]
+func (ac *AttendanceController) GetAttendances(c fiber.Ctx) error {
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	offset := (page - 1) * limit
+
+	var attendances []models.Attendance
+
+	// Build base query
+	query := ac.DB.Model(&models.Attendance{}).Preload("User").Preload("Location").Order("checked_in DESC")
+
+	// Date range filter if provided
+	startDate := c.Query("startDate", "")
+	endDate := c.Query("endDate", "")
+	if startDate != "" {
+		// Parse start date and set time to beginning of the day
+		parsedStartDate, err := time.Parse("2006-01-02", startDate)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid start_date format. Use YYYY-MM-DD.",
+			})
+		}
+		startOfDay := time.Date(parsedStartDate.Year(), parsedStartDate.Month(), parsedStartDate.Day(), 0, 0, 0, 0, parsedStartDate.Location())
+		query = query.Where("checked_in >= ?", startOfDay)
+	}
+	if endDate != "" {
+		// Parse end date and set time to end of the day
+		parsedEndDate, err := time.Parse("2006-01-02", endDate)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid end_date format. Use YYYY-MM-DD.",
+			})
+		}
+		endOfDay := time.Date(parsedEndDate.Year(), parsedEndDate.Month(), parsedEndDate.Day(), 23, 59, 59, 0, parsedEndDate.Location())
+		query = query.Where("checked_in <= ?", endOfDay)
+	}
+
+	// Search condition if provided
+	search := strings.TrimSpace(c.Query("search", ""))
+	if search != "" {
+		query = query.Joins("JOIN users ON users.id = attendances.user_id").
+			Where("users.username ILIKE ? OR users.full_name ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	// Get total count for pagination
+	var total int64
+	query.Count(&total)
+
+	// Retrieve paginated results
+	if err := query.Offset(offset).Limit(limit).Find(&attendances).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve attendances",
+		})
+	}
+
+	// Format response
+	attendanceList := make([]models.AttendanceResponse, len(attendances))
+	for i, attendance := range attendances {
+		attendanceList[i] = *attendance.ToResponse()
+	}
+
+	// Build success message
+	message := "Attendances retrieved successfully"
+	var filters []string
+
+	if startDate != "" || endDate != "" {
+		var dateRange []string
+		if startDate != "" {
+			dateRange = append(dateRange, "from: "+startDate)
+		}
+		if endDate != "" {
+			dateRange = append(dateRange, "to: "+endDate)
+		}
+		filters = append(filters, "date: "+strings.Join(dateRange, ", "))
+	}
+
+	if search != "" {
+		filters = append(filters, "search: "+search)
+	}
+
+	if len(filters) > 0 {
+		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
+		Success: true,
+		Message: message,
+		Data:    attendanceList,
+		Pagination: utils.Pagination{
+			Page:  page,
+			Limit: limit,
+			Total: total,
+		},
+	})
+}
+
+// GetAttendanceByID retrieves a specific attendance record by ID
+// @Summary Get Attendance by ID
+// @Description Retrieve a specific attendance record by its ID
+// @Tags Attendances
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Attendance ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.AttendanceResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/attendances/{id} [get]
+func (ac *AttendanceController) GetAttendanceByID(c fiber.Ctx) error {
+	// Parse id paramameter
+	id := c.Params("id")
+	var attendance models.Attendance
+	if err := ac.DB.Preload("User").Preload("Location").First(&attendance, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Attendance record not found",
+		})
+	}
+
+	return c.JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Attendance record retrieved successfully",
+		Data:    attendance.ToResponse(),
 	})
 }
