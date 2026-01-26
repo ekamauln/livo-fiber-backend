@@ -5,6 +5,7 @@ import (
 	"livo-fiber-backend/database"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -63,6 +64,7 @@ type QcRibbonsDailyCountResponse struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/ribbons/qc-ribbons [get]
 func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
+	log.Println("GetQCRibbons called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -131,6 +133,7 @@ func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetQCRibbons completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -158,10 +161,12 @@ func (qcrc *QCRibbonController) GetQCRibbons(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/ribbons/qc-ribbons/{id} [get]
 func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
+	log.Println("GetQCRibbon called")
 	// Parse id parameter
 	id := c.Params("id")
 	var qcRibbon models.QCRibbon
 	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcRibbon).Error; err != nil {
+		log.Println("GetQCRibbon - QC Ribbon not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "QC Ribbon with id " + id + " not found.",
@@ -174,6 +179,7 @@ func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 		qcRibbon.Order = &order
 	}
 
+	log.Println("GetQCRibbon completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "QC Ribbon retrieved successfully",
@@ -196,9 +202,11 @@ func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/ribbons/qc-ribbons [post]
 func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
+	log.Println("CreateQCRibbon called")
 	// Binding request body
 	var req CreateQCRibbonRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateQCRibbon - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -346,6 +354,7 @@ func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 		qcRibbon.Order = &orderResponse
 	}
 
+	log.Println("CreateQCRibbon completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "QC ribbon created successfully",
@@ -366,6 +375,7 @@ func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/ribbons/qc-ribbons/chart [get]
 func (qcrc *QCRibbonController) GetChartQCRibbons(c fiber.Ctx) error {
+	log.Println("GetChartQCRibbons called")
 	// Get current month start and end dates
 	now := time.Now()
 	currentYear, currentMonth, _ := now.Date()
@@ -406,6 +416,7 @@ func (qcrc *QCRibbonController) GetChartQCRibbons(c fiber.Ctx) error {
 
 	message := "QC Ribbon chart data " + currentMonth.String() + "  " + strconv.Itoa(currentYear) + " retrieved successfully"
 
+	log.Println("GetChartQCRibbons completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: message,

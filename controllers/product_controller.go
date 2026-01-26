@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -53,6 +54,7 @@ type UpdateProductRequest struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products [get]
 func (pc *ProductController) GetProducts(c fiber.Ctx) error {
+	log.Println("GetProducts called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -75,6 +77,7 @@ func (pc *ProductController) GetProducts(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&products).Error; err != nil {
+		log.Println("GetProducts - Failed to retrieve products:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve products",
@@ -100,6 +103,7 @@ func (pc *ProductController) GetProducts(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetProducts completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -127,16 +131,19 @@ func (pc *ProductController) GetProducts(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products/{id} [get]
 func (pc *ProductController) GetProduct(c fiber.Ctx) error {
+	log.Println("GetProduct called")
 	// Parse id parameter
 	id := c.Params("id")
 	var product models.Product
 	if err := pc.DB.Where("id = ?", id).First(&product).Error; err != nil {
+		log.Println("GetProduct - Product not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Product with id " + id + " not found.",
 		})
 	}
 
+	log.Println("GetProduct completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Product retrieved successfully",
@@ -159,9 +166,11 @@ func (pc *ProductController) GetProduct(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products [post]
 func (pc *ProductController) CreateProduct(c fiber.Ctx) error {
+	log.Println("CreateProduct called")
 	// Binding request body
 	var req CreateProductRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateProduct - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -190,12 +199,14 @@ func (pc *ProductController) CreateProduct(c fiber.Ctx) error {
 	}
 
 	if err := pc.DB.Create(&newProduct).Error; err != nil {
+		log.Println("CreateProduct - Failed to create product:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create product",
 		})
 	}
 
+	log.Println("CreateProduct completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Product created successfully",
@@ -219,10 +230,12 @@ func (pc *ProductController) CreateProduct(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products/{id} [put]
 func (pc *ProductController) UpdateProduct(c fiber.Ctx) error {
+	log.Println("UpdateProduct called")
 	// Parse id parameter
 	id := c.Params("id")
 	var product models.Product
 	if err := pc.DB.Where("id = ?", id).First(&product).Error; err != nil {
+		log.Println("UpdateProduct - Product not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Product with id " + id + " not found.",
@@ -258,12 +271,14 @@ func (pc *ProductController) UpdateProduct(c fiber.Ctx) error {
 	product.Location = req.Location
 
 	if err := pc.DB.Save(&product).Error; err != nil {
+		log.Println("UpdateProduct - Failed to update product:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update product",
 		})
 	}
 
+	log.Println("UpdateProduct completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Product updated successfully",
@@ -286,10 +301,12 @@ func (pc *ProductController) UpdateProduct(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/products/{id} [delete]
 func (pc *ProductController) DeleteProduct(c fiber.Ctx) error {
+	log.Println("DeleteProduct called")
 	// Parse id parameter
 	id := c.Params("id")
 	var product models.Product
 	if err := pc.DB.Where("id = ?", id).First(&product).Error; err != nil {
+		log.Println("DeleteProduct - Product not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Product with id " + id + " not found.",
@@ -298,12 +315,14 @@ func (pc *ProductController) DeleteProduct(c fiber.Ctx) error {
 
 	// Delete product (also deletes associated records if any due to foreign key constraints)
 	if err := pc.DB.Delete(&product).Error; err != nil {
+		log.Println("DeleteProduct - Failed to delete product:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete product",
 		})
 	}
 
+	log.Println("DeleteProduct completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Product deleted successfully",

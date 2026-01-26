@@ -6,6 +6,7 @@ import (
 	"livo-fiber-backend/database"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strings"
 	"time"
 
@@ -54,6 +55,7 @@ type RefreshTokenRequest struct {
 func (ac *AuthController) Register(c fiber.Ctx) error {
 	var req RegisterRequest
 	if err := c.Bind().Body(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -63,6 +65,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 	// Check if username exists
 	var existingUser models.User
 	if err := database.DB.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		log.Println("Username already exists:", req.Username)
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Username already exists",
@@ -71,6 +74,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 
 	// Check if email exists
 	if err := database.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		log.Println("Email already exists:", req.Email)
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Email already exists",
@@ -80,6 +84,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
+		log.Println("Failed to hash password:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to hash password",
@@ -89,6 +94,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 	// Get guest role first to ensure it exists
 	var guestRole models.Role
 	if err := database.DB.Where("role_name = ?", "guest").First(&guestRole).Error; err != nil {
+		log.Println("Failed to get default role:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to get default role",
@@ -108,6 +114,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 		}
 
 		if err := tx.Create(&user).Error; err != nil {
+			log.Panicln(err)
 			return err
 		}
 
@@ -116,6 +123,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 			"user_id": user.ID,
 			"role_id": guestRole.ID,
 		}).Error; err != nil {
+			log.Panicln(err)
 			return err
 		}
 
@@ -123,6 +131,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 	})
 
 	if err != nil {
+		log.Println("Failed to create user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create user",
@@ -132,6 +141,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 	// Load roles for response
 	database.DB.Preload("Roles").First(&user, "id = ?", user.ID)
 
+	log.Println("User registered successfully:", req.Username)
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User registered successfully",
@@ -155,6 +165,7 @@ func (ac *AuthController) Register(c fiber.Ctx) error {
 func (ac *AuthController) Login(c fiber.Ctx) error {
 	var req LoginRequest
 	if err := c.Bind().Body(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -164,6 +175,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 	// Find user
 	var user models.User
 	if err := database.DB.Preload("Roles").Where("username = ?", req.Username).First(&user).Error; err != nil {
+		log.Println("Invalid credentials for user:", req.Username)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid credentials",
@@ -172,6 +184,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 
 	// Check if user is active
 	if !user.IsActive {
+		log.Println("User account is disabled:", req.Username)
 		return c.Status(fiber.StatusForbidden).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User account is disabled",
@@ -180,6 +193,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 
 	// Verify password
 	if !utils.CheckPasswordHash(req.Password, user.Password) {
+		log.Println("Invalid credentials for user:", req.Username)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid credentials",
@@ -201,6 +215,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 
 	accessToken, err := utils.GenerateAccessToken(claims, ac.Config)
 	if err != nil {
+		log.Println("Failed to generate access token:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to generate access token",
@@ -209,6 +224,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 
 	refreshToken, err := utils.GenerateRefreshToken(claims, ac.Config)
 	if err != nil {
+		log.Println("Failed to generate refresh token:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to generate refresh token",
@@ -241,6 +257,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 	}
 
 	if err := database.DB.Create(&session).Error; err != nil {
+		log.Println("Failed to create session:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create session",
@@ -274,6 +291,7 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 		response.RefreshToken = refreshToken
 	}
 
+	log.Println("User logged in successfully:", req.Username)
 	return c.JSON(response)
 }
 
@@ -319,6 +337,7 @@ func (ac *AuthController) Logout(c fiber.Ctx) error {
 		MaxAge:   -1,
 	})
 
+	log.Println("User logged out successfully, userID:", userID)
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Logged out successfully",
@@ -345,6 +364,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 			RefreshToken string `json:"refreshToken"`
 		}
 		if err := c.Bind().Body(&body); err != nil || body.RefreshToken == "" {
+			log.Println("Refresh token required:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Refresh token required",
@@ -356,6 +376,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 	// Validate refresh token
 	token, err := utils.ValidateToken(refreshToken, ac.Config)
 	if err != nil {
+		log.Println("Invalid or expired refresh token:", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid or expired refresh token",
@@ -365,6 +386,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 	// Check token type
 	tokenType, err := token.GetString("type")
 	if err != nil || tokenType != "refresh" {
+		log.Println("Invalid token type")
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid token type",
@@ -374,6 +396,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 	// Get session
 	var session models.Session
 	if err := database.DB.Preload("User.Roles").Where("refresh_token = ?", refreshToken).First(&session).Error; err != nil {
+		log.Println("Session not found for refresh token:", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Session not found",
@@ -383,6 +406,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 	// Check if session expired
 	if time.Now().After(session.ExpiresAt) {
 		database.DB.Delete(&session)
+		log.Println("Session expired for userID:", session.UserID)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Session expired",
@@ -404,6 +428,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 
 	newAccessToken, err := utils.GenerateAccessToken(claims, ac.Config)
 	if err != nil {
+		log.Println("Failed to generate access token:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to generate access token",
@@ -413,6 +438,7 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 	// Optionally rotate refresh token
 	newRefreshToken, err := utils.GenerateRefreshToken(claims, ac.Config)
 	if err != nil {
+		log.Println("Failed to generate refresh token:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to generate refresh token",
@@ -445,5 +471,6 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 		response.RefreshToken = newRefreshToken
 	}
 
+	log.Println("Token refreshed successfully for userID:", session.UserID)
 	return c.JSON(response)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -68,6 +69,7 @@ func (bc *ChannelController) GetChannels(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&channels).Error; err != nil {
+		log.Println("Error retrieving channels:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve channels",
@@ -93,6 +95,7 @@ func (bc *ChannelController) GetChannels(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -124,12 +127,14 @@ func (bc *ChannelController) GetChannel(c fiber.Ctx) error {
 	id := c.Params("id")
 	var channel models.Channel
 	if err := bc.DB.Where("id = ?", id).First(&channel).Error; err != nil {
+		log.Println("Channel with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Channel with id " + id + " not found.",
 		})
 	}
 
+	log.Println("Channel retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Channel retrieved successfully",
@@ -155,6 +160,7 @@ func (bc *ChannelController) CreateChannel(c fiber.Ctx) error {
 	// Binding request body
 	var req CreateChannelRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -167,6 +173,7 @@ func (bc *ChannelController) CreateChannel(c fiber.Ctx) error {
 	// Check for existing channel with same code
 	var existingChannel models.Channel
 	if err := bc.DB.Where("channel_code = ?", req.ChannelCode).First(&existingChannel).Error; err == nil {
+		log.Println("Channel with code " + req.ChannelCode + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Channel with code " + req.ChannelCode + " already exists.",
@@ -180,12 +187,14 @@ func (bc *ChannelController) CreateChannel(c fiber.Ctx) error {
 	}
 
 	if err := bc.DB.Create(&newChannel).Error; err != nil {
+		log.Println("Failed to create channel:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create channel",
 		})
 	}
 
+	log.Println("Channel created successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Channel created successfully",
@@ -213,6 +222,7 @@ func (bc *ChannelController) UpdateChannel(c fiber.Ctx) error {
 	id := c.Params("id")
 	var channel models.Channel
 	if err := bc.DB.Where("id = ?", id).First(&channel).Error; err != nil {
+		log.Println("Channel with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Channel with id " + id + " not found.",
@@ -222,6 +232,7 @@ func (bc *ChannelController) UpdateChannel(c fiber.Ctx) error {
 	// Binding request body
 	var req UpdateChannelRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -234,6 +245,7 @@ func (bc *ChannelController) UpdateChannel(c fiber.Ctx) error {
 	// Check for existing channel with same code (excluding current channel)
 	var existingChannel models.Channel
 	if err := bc.DB.Where("channel_code = ? AND id != ?", req.ChannelCode, id).First(&existingChannel).Error; err == nil {
+		log.Println("Channel with code " + req.ChannelCode + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Channel with code " + req.ChannelCode + " already exists.",
@@ -245,12 +257,14 @@ func (bc *ChannelController) UpdateChannel(c fiber.Ctx) error {
 	channel.ChannelName = req.ChannelName
 
 	if err := bc.DB.Save(&channel).Error; err != nil {
+		log.Println("Failed to update channel:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update channel",
 		})
 	}
 
+	log.Println("Channel updated successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Channel updated successfully",
@@ -277,6 +291,7 @@ func (bc *ChannelController) DeleteChannel(c fiber.Ctx) error {
 	id := c.Params("id")
 	var channel models.Channel
 	if err := bc.DB.Where("id = ?", id).First(&channel).Error; err != nil {
+		log.Println("Channel with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Channel with id " + id + " not found.",
@@ -285,12 +300,14 @@ func (bc *ChannelController) DeleteChannel(c fiber.Ctx) error {
 
 	// Delete channel (also deletes associated records if any due to foreign key constraints)
 	if err := bc.DB.Delete(&channel).Error; err != nil {
+		log.Println("Failed to delete channel:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete channel",
 		})
 	}
 
+	log.Println("Channel deleted successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Channel deleted successfully",

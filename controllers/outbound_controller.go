@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -65,6 +66,7 @@ type OutboundsDailyCountResponse struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/outbounds [get]
 func (oc *OutboundController) GetOutbounds(c fiber.Ctx) error {
+	log.Println("GetOutbounds called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -100,6 +102,7 @@ func (oc *OutboundController) GetOutbounds(c fiber.Ctx) error {
 	query.Count(&total)
 
 	if err := query.Limit(limit).Offset(offset).Find(&outbounds).Error; err != nil {
+		log.Println("GetOutbounds - Failed to retrieve outbounds:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve outbounds",
@@ -133,6 +136,7 @@ func (oc *OutboundController) GetOutbounds(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetOutbounds completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -160,10 +164,12 @@ func (oc *OutboundController) GetOutbounds(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/outbounds/{id} [get]
 func (oc *OutboundController) GetOutbound(c fiber.Ctx) error {
+	log.Println("GetOutbound called")
 	// Parse id parameter
 	id := c.Params("id")
 	var outbound models.Outbound
 	if err := oc.DB.Preload("OutboundUser").Where("id = ?", id).First(&outbound).Error; err != nil {
+		log.Println("GetOutbound - Outbound not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Outbound with id" + id + " not found.",
@@ -176,6 +182,7 @@ func (oc *OutboundController) GetOutbound(c fiber.Ctx) error {
 		outbound.Order = &order
 	}
 
+	log.Println("GetOutbound completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Outbound retrieved successfully",
@@ -197,9 +204,11 @@ func (oc *OutboundController) GetOutbound(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/outbounds [post]
 func (oc *OutboundController) CreateOutbound(c fiber.Ctx) error {
+	log.Println("CreateOutbound called")
 	// Binding request body
 	var req CreateOutboundRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateOutbound - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -327,6 +336,7 @@ func (oc *OutboundController) CreateOutbound(c fiber.Ctx) error {
 		outbound.Order = &orderResponse
 	}
 
+	log.Println("CreateOutbound completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Outbound created successfully",
@@ -350,10 +360,12 @@ func (oc *OutboundController) CreateOutbound(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/outbounds/{id} [put]
 func (oc *OutboundController) UpdateOutbound(c fiber.Ctx) error {
+	log.Println("UpdateOutbound called")
 	// Parse id parameter
 	id := c.Params("id")
 	var outbound models.Outbound
 	if err := oc.DB.Where("id = ?", id).First(&outbound).Error; err != nil {
+		log.Println("UpdateOutbound - Outbound not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Outbound with id " + id + " not found.",
@@ -403,6 +415,7 @@ func (oc *OutboundController) UpdateOutbound(c fiber.Ctx) error {
 		outbound.Order = &orderResponse
 	}
 
+	log.Println("UpdateOutbound completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Outbound updated successfully",
@@ -423,6 +436,7 @@ func (oc *OutboundController) UpdateOutbound(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/outbounds/chart [get]
 func (oc *OutboundController) GetChartOutbounds(c fiber.Ctx) error {
+	log.Println("GetChartOutbounds called")
 	// Get current month start and end dates
 	now := time.Now()
 	currentYear, currentMonth, _ := now.Date()
@@ -463,6 +477,7 @@ func (oc *OutboundController) GetChartOutbounds(c fiber.Ctx) error {
 
 	message := "Outbound chart data " + currentMonth.String() + "  " + strconv.Itoa(currentYear) + " retrieved successfully"
 
+	log.Println("GetChartOutbounds completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: message,

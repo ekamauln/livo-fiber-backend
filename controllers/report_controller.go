@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -82,6 +83,7 @@ type UserFeeReportsWithDetailsListResponse struct {
 
 // BuildBoxUsageDetails retrieves detailed usage for a specific box
 func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate string) []BoxUsageDetail {
+	log.Println("BuildBoxUsageDetails called")
 	var details []BoxUsageDetail
 
 	// Query from QCRibbonDetail with joins
@@ -187,6 +189,7 @@ func (rc *ReportController) BuildBoxUsageDetails(boxID uint, startDate, endDate 
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/reports/boxes [get]
 func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
+	log.Println("GetBoxReports called")
 	// Parse query parameters
 	startDate := c.Query("startDate", "")
 	endDate := c.Query("endDate", "")
@@ -254,6 +257,7 @@ func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
 
 	// Execute query
 	if err := query.Scan(&results).Error; err != nil {
+		log.Println("GetBoxReports - Failed to retrieve box reports:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve box reports",
@@ -305,6 +309,7 @@ func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
 		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
 	}
 
+	log.Println("GetBoxReports completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,
@@ -328,6 +333,7 @@ func (rc *ReportController) GetBoxReports(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/reports/outbounds [get]
 func (rc *ReportController) GetOutboundReports(c fiber.Ctx) error {
+	log.Println("GetOutboundReports called")
 	// Parse query parameters
 	date := c.Query("date", "")
 	slug := c.Query("slug", "")
@@ -363,6 +369,7 @@ func (rc *ReportController) GetOutboundReports(c fiber.Ctx) error {
 
 	// retrieve results
 	if err := query.Find(&outbounds).Error; err != nil {
+		log.Println("GetOutboundReports - Failed to retrieve outbound reports:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve outbound reports",
@@ -395,6 +402,7 @@ func (rc *ReportController) GetOutboundReports(c fiber.Ctx) error {
 		Outbounds: outboundList,
 	}
 
+	log.Println("GetOutboundReports completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,
@@ -419,6 +427,7 @@ func (rc *ReportController) GetOutboundReports(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/reports/returns [get]
 func (rc *ReportController) GetReturnReports(c fiber.Ctx) error {
+	log.Println("GetReturnReports called")
 	// Parse query parameters
 	date := c.Query("date", "")
 	channelId := c.Query("channelId", "")
@@ -460,6 +469,7 @@ func (rc *ReportController) GetReturnReports(c fiber.Ctx) error {
 
 	// retrieve results
 	if err := query.Preload("ReturnDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Preload("UpdateUser").Find(&returns).Error; err != nil {
+		log.Println("GetReturnReports - Failed to retrieve return reports:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve return reports",
@@ -496,6 +506,7 @@ func (rc *ReportController) GetReturnReports(c fiber.Ctx) error {
 		Returns: returnList,
 	}
 
+	log.Println("GetReturnReports completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,
@@ -518,6 +529,7 @@ func (rc *ReportController) GetReturnReports(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/reports/complains [get]
 func (rc *ReportController) GetComplainReports(c fiber.Ctx) error {
+	log.Println("GetComplainReports called")
 	var complaints []models.Complain
 
 	// Build base query
@@ -546,6 +558,7 @@ func (rc *ReportController) GetComplainReports(c fiber.Ctx) error {
 
 	// Execute query
 	if err := query.Find(&complaints).Error; err != nil {
+		log.Println("GetComplainReports - Failed to retrieve complaint reports:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve complaint reports",
@@ -574,6 +587,7 @@ func (rc *ReportController) GetComplainReports(c fiber.Ctx) error {
 		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
 	}
 
+	log.Println("GetComplainReports completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,
@@ -600,6 +614,7 @@ func (rc *ReportController) GetComplainReports(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/reports/user-fees [get]
 func (rc *ReportController) GetUserFeeReports(c fiber.Ctx) error {
+	log.Println("GetUserFeeReports called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -663,6 +678,7 @@ func (rc *ReportController) GetUserFeeReports(c fiber.Ctx) error {
 	var totalCount int64
 	countQuery := rc.DB.Table("(?) as summaries", summaryQuery)
 	if err := countQuery.Count(&totalCount).Error; err != nil {
+		log.Println("GetUserFeeReports - Failed to count user fee reports:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to count user fee reports",
@@ -672,6 +688,7 @@ func (rc *ReportController) GetUserFeeReports(c fiber.Ctx) error {
 	// Apply pagination
 	var summaries []UserSummary
 	if err := summaryQuery.Limit(limit).Offset(offset).Scan(&summaries).Error; err != nil {
+		log.Println("GetUserFeeReports - Failed to retrieve user fee reports:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve user fee reports",
@@ -709,6 +726,7 @@ func (rc *ReportController) GetUserFeeReports(c fiber.Ctx) error {
 
 		var rawDetails []ComplainDetailRaw
 		if err := detailQuery.Scan(&rawDetails).Error; err != nil {
+			log.Println("GetUserFeeReports - Failed to retrieve complain details:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to retrieve complain details",
@@ -763,6 +781,7 @@ func (rc *ReportController) GetUserFeeReports(c fiber.Ctx) error {
 		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
 	}
 
+	log.Println("GetUserFeeReports completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,

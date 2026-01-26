@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -57,12 +58,14 @@ type MobileCheckOutResponse struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/mobile-attendances/face-verify [post]
 func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
+	log.Println("VerifyUserFace called")
 	// Get current user ID from context
 	currUserID := c.Locals("userId").(string)
 
 	// Get user from database
 	var user models.User
 	if err := mac.DB.Where("id = ?", currUserID).First(&user).Error; err != nil {
+		log.Println("VerifyUserFace - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
@@ -71,6 +74,7 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 
 	file, err := c.FormFile("image")
 	if err != nil {
+		log.Println("VerifyUserFace - Image file required:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Image file is required",
@@ -79,6 +83,7 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 
 	// Validate mime type
 	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		log.Println("VerifyUserFace - Invalid image file type")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid image file type",
@@ -87,6 +92,7 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 
 	tmpPath := fmt.Sprintf("tmp/verify_%d.jpg", user.ID)
 	if err := c.SaveFile(file, tmpPath); err != nil {
+		log.Println("VerifyUserFace - Failed to save image file:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to save image file",
@@ -96,6 +102,7 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 
 	result, err := utils.SendToDeepFaceVerify(user.ID, tmpPath)
 	if err != nil {
+		log.Println("VerifyUserFace - Face verification failed:", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Face verification failed: %v", err),
@@ -103,6 +110,7 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 	}
 
 	if !result.Matched {
+		log.Printf("VerifyUserFace - Face does not match (userID=%s, confidence=%.2f)\n", currUserID, result.Confidence)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success":    false,
 			"error":      "Face verification failed - face does not match",
@@ -113,6 +121,7 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 	}
 
 	// Attendance logging can be implemented here
+	log.Println("VerifyUserFace completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Face verified successfully",
@@ -139,12 +148,14 @@ func (mac *MobileAttendanceController) VerifyUserFace(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/mobile-attendances/checkin/face [post]
 func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) error {
+	log.Println("MobileCheckInUserByFace called")
 	// Get current user ID from context
 	currUserID := c.Locals("userId").(string)
 
 	// Get user from database
 	var user models.User
 	if err := mac.DB.Where("id = ?", currUserID).First(&user).Error; err != nil {
+		log.Println("MobileCheckInUserByFace - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
@@ -153,6 +164,7 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 
 	file, err := c.FormFile("image")
 	if err != nil {
+		log.Println("MobileCheckInUserByFace - Image file required:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Image file is required",
@@ -161,6 +173,7 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 
 	// Validate mime type
 	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		log.Println("MobileCheckInUserByFace - Invalid image file type")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid image file type",
@@ -169,6 +182,7 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 
 	tmpPath := "tmp/search_face.jpg"
 	if err := c.SaveFile(file, tmpPath); err != nil {
+		log.Println("MobileCheckInUserByFace - Failed to save image:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to save image file",
@@ -178,6 +192,7 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 
 	result, err := utils.SendToDeepFaceVerify(user.ID, tmpPath)
 	if err != nil {
+		log.Println("MobileCheckInUserByFace - Face verification failed:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Face verification failed: %v", err),
@@ -185,10 +200,12 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 	}
 
 	if !result.Matched {
+		log.Printf("MobileCheckInUserByFace - Face does not match (userID=%s)\n", currUserID)
 		return c.JSON(fiber.Map{
 			"matched": false,
 		})
 	}
+	log.Println("MobileCheckInUserByFace - Face verified successfully")
 
 	locationIDStr := c.FormValue("location_id")
 	if locationIDStr == "" {
@@ -345,11 +362,13 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	if err := mac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err == nil {
+		log.Println("MobileCheckInUserByFace - User already checked in today")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User already checked in today",
 		})
 	}
+	log.Println("MobileCheckInUserByFace - No check-in found for today, proceeding...")
 
 	// Automatically determine status based on check-in time
 	checkedInTime := time.Now()
@@ -420,8 +439,10 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 		Longitude:  longitude,
 		Accuracy:   accuracy,
 	}
+	log.Printf("MobileCheckInUserByFace - Creating attendance (status=%s, late=%d min)\n", status, lateMinutes)
 
 	if err := mac.DB.Create(&newAttendance).Error; err != nil {
+		log.Println("MobileCheckInUserByFace - Failed to create attendance:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create attendance record",
@@ -431,6 +452,7 @@ func (mac *MobileAttendanceController) MobileCheckInUserByFace(c fiber.Ctx) erro
 	// Reload with associations
 	mac.DB.Preload("User").Preload("Location").First(&newAttendance, newAttendance.ID)
 
+	log.Println("MobileCheckInUserByFace completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked in successfully",
@@ -471,6 +493,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 	// Get user from database
 	var user models.User
 	if err := mac.DB.Where("id = ?", currUserID).First(&user).Error; err != nil {
+		log.Println("User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
@@ -479,6 +502,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	file, err := c.FormFile("image")
 	if err != nil {
+		log.Println("Image file required:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Image file is required",
@@ -487,6 +511,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	// Validate mime type
 	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		log.Println("Invalid image file type")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid image file type",
@@ -495,6 +520,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	tmpPath := "tmp/search_face.jpg"
 	if err := c.SaveFile(file, tmpPath); err != nil {
+		log.Println("Failed to save image:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to save image file",
@@ -504,6 +530,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	result, err := utils.SendToDeepFaceVerify(user.ID, tmpPath)
 	if err != nil {
+		log.Println("Face verification failed:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Face verification failed: %v", err),
@@ -511,13 +538,16 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 	}
 
 	if !result.Matched {
-		return c.JSON(fiber.Map{
-			"matched": false,
+		log.Printf("Face does not match (userID=%s)\n", currUserID)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Face verification failed - face does not match",
 		})
 	}
 
 	locationIDStr := c.FormValue("location_id")
 	if locationIDStr == "" {
+		log.Println("Location ID is required")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Location ID is required",
@@ -526,6 +556,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	locationID, err := strconv.Atoi(locationIDStr)
 	if err != nil {
+		log.Println("Invalid Location ID")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid Location ID",
@@ -538,6 +569,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 	accuracyStr := c.FormValue("accuracy")
 
 	if latitudeStr == "" || longitudeStr == "" || accuracyStr == "" {
+		log.Println("Latitude, longitude, and accuracy are required")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Latitude, longitude, and accuracy are required",
@@ -546,6 +578,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	latitude, err := strconv.ParseFloat(latitudeStr, 64)
 	if err != nil {
+		log.Println("Invalid latitude format")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid latitude format",
@@ -554,6 +587,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	longitude, err := strconv.ParseFloat(longitudeStr, 64)
 	if err != nil {
+		log.Println("Invalid longitude format")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid longitude format",
@@ -562,6 +596,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	accuracy, err := strconv.ParseFloat(accuracyStr, 64)
 	if err != nil {
+		log.Println("Invalid accuracy format")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid accuracy format",
@@ -571,6 +606,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 	// Verify location exists
 	var location models.Location
 	if err := mac.DB.Where("id = ?", locationID).First(&location).Error; err != nil {
+		log.Println("Location not found")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Location not found",
@@ -582,6 +618,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	// Check if user is within 10 meters
 	if distance > 10.0 {
+		log.Println("User is too far from the check-in location")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("You are too far from the check-in location. Distance: %.2f meters", distance),
@@ -606,6 +643,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 		// If accuracy suddenly jumps more than 50 meters, it's suspicious
 		if accuracyDiff > 50 {
+			log.Println("Suspicious GPS behavior detected")
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   fmt.Sprintf("Suspicious GPS behavior detected: Accuracy suddenly changed from %.1f to %.1f meters", lastAccuracy, accuracy),
@@ -624,6 +662,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 		}
 
 		if allSame && accuracy > 0 {
+			log.Println("Suspicious GPS behavior detected: Accuracy values are suspiciously consistent")
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Suspicious GPS behavior detected: Accuracy values are suspiciously consistent",
@@ -648,6 +687,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 			// If speed is more than 50 m/s (180 km/h), it's suspicious
 			if speed > 50 {
+				log.Println("Suspicious GPS behavior detected: Impossible travel speed")
 				return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 					Success: false,
 					Error:   fmt.Sprintf("Suspicious GPS behavior detected: Impossible travel speed (%.2f km/h)", speed*3.6),
@@ -658,6 +698,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	// 4. Check if accuracy is too poor (more than 30 meters)
 	if accuracy > 30 {
+		log.Println("GPS accuracy is too poor")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("GPS accuracy is too poor: %.1f meters. Please ensure GPS is enabled and try again.", accuracy),
@@ -670,6 +711,7 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 	if err := mac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err != nil {
+		log.Println("User has not checked in today")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User has not checked in today",
@@ -715,6 +757,9 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 		}
 	} else {
 		// Not within valid checkout windows
+		log.Printf("Not within valid check-out time. Early checkout: %s-%s, Regular checkout: %s onwards",
+			earlyCheckOut.Format("15:04"), earlyCheckOutEnd.Format("15:04"),
+			regularCheckOutStart.Format("15:04"))
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error: fmt.Sprintf("Not within valid check-out time. Early checkout: %s-%s, Regular checkout: %s onwards",
@@ -725,12 +770,14 @@ func (mac *MobileAttendanceController) MobileCheckOutUserByFace(c fiber.Ctx) err
 
 	// Update attendance record
 	if err := mac.DB.Save(&attendance).Error; err != nil {
+		log.Println("Failed to update attendance record:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update attendance record",
 		})
 	}
 
+	log.Println("MobileCheckOutUserByFace completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked out successfully",

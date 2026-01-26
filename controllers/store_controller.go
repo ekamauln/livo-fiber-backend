@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,7 @@ type UpdateStoreRequest struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores [get]
 func (bc *StoreController) GetStores(c fiber.Ctx) error {
+	log.Println("GetStores called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -69,6 +71,7 @@ func (bc *StoreController) GetStores(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&stores).Error; err != nil {
+		log.Println("GetStores - Failed to retrieve stores:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve stores",
@@ -94,6 +97,7 @@ func (bc *StoreController) GetStores(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetStores completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -120,16 +124,19 @@ func (bc *StoreController) GetStores(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores/{id} [get]
 func (bc *StoreController) GetStore(c fiber.Ctx) error {
+	log.Println("GetStore called")
 	// Parse id parameter
 	id := c.Params("id")
 	var store models.Store
 	if err := bc.DB.Where("id = ?", id).First(&store).Error; err != nil {
+		log.Println("GetStore - Store not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Store with id " + id + " not found.",
 		})
 	}
 
+	log.Println("GetStore completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Store retrieved successfully",
@@ -152,9 +159,11 @@ func (bc *StoreController) GetStore(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores [post]
 func (bc *StoreController) CreateStore(c fiber.Ctx) error {
+	log.Println("CreateStore called")
 	// Binding request body
 	var req CreateStoreRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateStore - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -180,12 +189,14 @@ func (bc *StoreController) CreateStore(c fiber.Ctx) error {
 	}
 
 	if err := bc.DB.Create(&newStore).Error; err != nil {
+		log.Println("CreateStore - Failed to create store:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create store",
 		})
 	}
 
+	log.Println("CreateStore completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Store created successfully",
@@ -209,10 +220,12 @@ func (bc *StoreController) CreateStore(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores/{id} [put]
 func (bc *StoreController) UpdateStore(c fiber.Ctx) error {
+	log.Println("UpdateStore called")
 	// Parse id parameter
 	id := c.Params("id")
 	var store models.Store
 	if err := bc.DB.Where("id = ?", id).First(&store).Error; err != nil {
+		log.Println("UpdateStore - Store not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Store with id " + id + " not found.",
@@ -245,12 +258,14 @@ func (bc *StoreController) UpdateStore(c fiber.Ctx) error {
 	store.StoreName = req.StoreName
 
 	if err := bc.DB.Save(&store).Error; err != nil {
+		log.Println("UpdateStore - Failed to update store:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update store",
 		})
 	}
 
+	log.Println("UpdateStore completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Store updated successfully",
@@ -273,10 +288,12 @@ func (bc *StoreController) UpdateStore(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/stores/{id} [delete]
 func (bc *StoreController) DeleteStore(c fiber.Ctx) error {
+	log.Println("DeleteStore called")
 	// Parse id parameter
 	id := c.Params("id")
 	var store models.Store
 	if err := bc.DB.Where("id = ?", id).First(&store).Error; err != nil {
+		log.Println("DeleteStore - Store not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Store with id " + id + " not found.",
@@ -285,12 +302,14 @@ func (bc *StoreController) DeleteStore(c fiber.Ctx) error {
 
 	// Delete store (also deletes associated records if any due to foreign key constraints)
 	if err := bc.DB.Delete(&store).Error; err != nil {
+		log.Println("DeleteStore - Failed to delete store:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete store",
 		})
 	}
 
+	log.Println("DeleteStore completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Store deleted successfully",

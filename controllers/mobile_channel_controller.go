@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -47,6 +48,7 @@ func (mcc *MobileChannelController) GetMobileChannels(c fiber.Ctx) error {
 
 	// Execute the query to fetch mobile channels
 	if err := query.Find(&mobileChannels).Error; err != nil {
+		log.Println("Error retrieving mobile channels:", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve mobile channels")
 	}
 
@@ -69,6 +71,7 @@ func (mcc *MobileChannelController) GetMobileChannels(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,

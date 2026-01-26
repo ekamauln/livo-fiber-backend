@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,7 @@ type UpdateRoleRequest struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles [get]
 func (rc *RoleController) GetRoles(c fiber.Ctx) error {
+	log.Println("GetRoles called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -69,6 +71,7 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&roles).Error; err != nil {
+		log.Println("GetRoles - Failed to retrieve roles:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve roles",
@@ -94,6 +97,7 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetRoles completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -121,16 +125,19 @@ func (rc *RoleController) GetRoles(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles/{id} [get]
 func (rc *RoleController) GetRole(c fiber.Ctx) error {
+	log.Println("GetRole called")
 	// Parse id parameter
 	id := c.Params("id")
 	var role models.Role
 	if err := rc.DB.Where("id = ?", id).First(&role).Error; err != nil {
+		log.Println("GetRole - Role not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Role with id " + id + " not found.",
 		})
 	}
 
+	log.Println("GetRole completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role retrieved successfully",
@@ -153,9 +160,11 @@ func (rc *RoleController) GetRole(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles [post]
 func (rc *RoleController) CreateRole(c fiber.Ctx) error {
+	log.Println("CreateRole called")
 	// Binding request body
 	var req CreateRoleRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateRole - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -198,12 +207,14 @@ func (rc *RoleController) CreateRole(c fiber.Ctx) error {
 	}
 
 	if err := rc.DB.Create(&newRole).Error; err != nil {
+		log.Println("CreateRole - Failed to create role:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create role",
 		})
 	}
 
+	log.Println("CreateRole completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role created successfully",
@@ -227,10 +238,12 @@ func (rc *RoleController) CreateRole(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles/{id} [put]
 func (rc *RoleController) UpdateRole(c fiber.Ctx) error {
+	log.Println("UpdateRole called")
 	// Parse id parameter
 	id := c.Params("id")
 	var role models.Role
 	if err := rc.DB.Where("id = ?", id).First(&role).Error; err != nil {
+		log.Println("UpdateRole - Role not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Role with id " + id + " not found.",
@@ -280,12 +293,14 @@ func (rc *RoleController) UpdateRole(c fiber.Ctx) error {
 	role.Hierarchy = req.Hierarchy
 
 	if err := rc.DB.Save(&role).Error; err != nil {
+		log.Println("UpdateRole - Failed to update role:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update role",
 		})
 	}
 
+	log.Println("UpdateRole completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role updated successfully",
@@ -308,10 +323,12 @@ func (rc *RoleController) UpdateRole(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/roles/{id} [delete]
 func (rc *RoleController) DeleteRole(c fiber.Ctx) error {
+	log.Println("DeleteRole called")
 	// Parse id parameter
 	id := c.Params("id")
 	var role models.Role
 	if err := rc.DB.Where("id = ?", id).First(&role).Error; err != nil {
+		log.Println("DeleteRole - Role not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Role with id " + id + " not found.",
@@ -320,12 +337,14 @@ func (rc *RoleController) DeleteRole(c fiber.Ctx) error {
 
 	// Delete role (also deletes user_roles due to foreign key constraint with ON DELETE CASCADE)
 	if err := rc.DB.Delete(&role).Error; err != nil {
+		log.Println("DeleteRole - Failed to delete role:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete role",
 		})
 	}
 
+	log.Println("DeleteRole completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role deleted successfully",

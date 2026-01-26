@@ -3,6 +3,7 @@ package controllers
 import (
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -67,6 +68,7 @@ func (lc *LocationController) GetLocations(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Offset(offset).Limit(limit).Find(&locations).Error; err != nil {
+		log.Println("Error retrieving locations:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve locations",
@@ -92,6 +94,7 @@ func (lc *LocationController) GetLocations(c fiber.Ctx) error {
 	}
 
 	// Return paginated response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -122,12 +125,14 @@ func (lc *LocationController) GetLocation(c fiber.Ctx) error {
 	id := c.Params("id")
 	var location models.Location
 	if err := lc.DB.Where("id = ?", id).First(&location).Error; err != nil {
+		log.Println("Location not found")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Location not found",
 		})
 	}
 
+	log.Println("Location retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Location retrieved successfully",
@@ -151,6 +156,7 @@ func (lc *LocationController) CreateLocation(c fiber.Ctx) error {
 	// Binding request body
 	var req CreateLocationRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -160,6 +166,7 @@ func (lc *LocationController) CreateLocation(c fiber.Ctx) error {
 	// Check for existing location with the same name
 	var existing models.Location
 	if err := lc.DB.Where("name = ?", req.Name).First(&existing).Error; err == nil {
+		log.Println("Location with the same name already exists")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Location with the same name already exists",
@@ -174,12 +181,14 @@ func (lc *LocationController) CreateLocation(c fiber.Ctx) error {
 	}
 
 	if err := lc.DB.Create(&location).Error; err != nil {
+		log.Println("Failed to create location:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create location",
 		})
 	}
 
+	log.Println("Location created successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Location created successfully",
@@ -206,6 +215,7 @@ func (lc *LocationController) UpdateLocation(c fiber.Ctx) error {
 	id := c.Params("id")
 	var location models.Location
 	if err := lc.DB.Where("id = ?", id).First(&location).Error; err != nil {
+		log.Println("Location not found")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Location not found",
@@ -215,6 +225,7 @@ func (lc *LocationController) UpdateLocation(c fiber.Ctx) error {
 	// Binding request body
 	var req UpdateLocationRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -226,12 +237,14 @@ func (lc *LocationController) UpdateLocation(c fiber.Ctx) error {
 	location.Longitude = req.Longitude
 
 	if err := lc.DB.Save(&location).Error; err != nil {
+		log.Println("Failed to update location:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update location",
 		})
 	}
 
+	log.Println("Location updated successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Location updated successfully",
@@ -257,6 +270,7 @@ func (lc *LocationController) DeleteLocation(c fiber.Ctx) error {
 	id := c.Params("id")
 	var location models.Location
 	if err := lc.DB.Where("id = ?", id).First(&location).Error; err != nil {
+		log.Println("Location not found")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Location not found",
@@ -264,12 +278,14 @@ func (lc *LocationController) DeleteLocation(c fiber.Ctx) error {
 	}
 
 	if err := lc.DB.Delete(&location).Error; err != nil {
+		log.Println("Failed to delete location:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete location",
 		})
 	}
 
+	log.Println("Location deleted successfully")
 	return c.Status(fiber.StatusNoContent).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Location deleted successfully",

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -68,6 +69,7 @@ func (bc *BoxController) GetBoxes(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&boxes).Error; err != nil {
+		log.Println("Error retrieving boxes:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve boxes",
@@ -93,6 +95,7 @@ func (bc *BoxController) GetBoxes(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -124,12 +127,14 @@ func (bc *BoxController) GetBox(c fiber.Ctx) error {
 	id := c.Params("id")
 	var box models.Box
 	if err := bc.DB.Where("id = ?", id).First(&box).Error; err != nil {
+		log.Println("Box with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Box with id " + id + " not found.",
 		})
 	}
 
+	log.Println("Box retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Box retrieved successfully",
@@ -155,6 +160,7 @@ func (bc *BoxController) CreateBox(c fiber.Ctx) error {
 	// Binding request body
 	var req CreateBoxRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -167,6 +173,7 @@ func (bc *BoxController) CreateBox(c fiber.Ctx) error {
 	// Check for existing box with same code
 	var existingBox models.Box
 	if err := bc.DB.Where("box_code = ?", req.BoxCode).First(&existingBox).Error; err == nil {
+		log.Println("Box with code " + req.BoxCode + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Box with code " + req.BoxCode + " already exists.",
@@ -180,12 +187,14 @@ func (bc *BoxController) CreateBox(c fiber.Ctx) error {
 	}
 
 	if err := bc.DB.Create(&newBox).Error; err != nil {
+		log.Println("Failed to create box:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create box",
 		})
 	}
 
+	log.Println("Box created successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Box created successfully",
@@ -213,6 +222,7 @@ func (bc *BoxController) UpdateBox(c fiber.Ctx) error {
 	id := c.Params("id")
 	var box models.Box
 	if err := bc.DB.Where("id = ?", id).First(&box).Error; err != nil {
+		log.Println("Box with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Box with id " + id + " not found.",
@@ -222,6 +232,7 @@ func (bc *BoxController) UpdateBox(c fiber.Ctx) error {
 	// Binding request body
 	var req UpdateBoxRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -234,6 +245,7 @@ func (bc *BoxController) UpdateBox(c fiber.Ctx) error {
 	// Check for existing box with same code (excluding current box)
 	var existingBox models.Box
 	if err := bc.DB.Where("box_code = ? AND id != ?", req.BoxCode, id).First(&existingBox).Error; err == nil {
+		log.Println("Box with code " + req.BoxCode + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Box with code " + req.BoxCode + " already exists.",
@@ -245,12 +257,14 @@ func (bc *BoxController) UpdateBox(c fiber.Ctx) error {
 	box.BoxName = req.BoxName
 
 	if err := bc.DB.Save(&box).Error; err != nil {
+		log.Println("Failed to update box:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update box",
 		})
 	}
 
+	log.Println("Box updated successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Box updated successfully",
@@ -277,6 +291,7 @@ func (bc *BoxController) DeleteBox(c fiber.Ctx) error {
 	id := c.Params("id")
 	var box models.Box
 	if err := bc.DB.Where("id = ?", id).First(&box).Error; err != nil {
+		log.Println("Box with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Box with id " + id + " not found.",
@@ -285,12 +300,14 @@ func (bc *BoxController) DeleteBox(c fiber.Ctx) error {
 
 	// Delete box (also deletes associated records if any due to foreign key constraints)
 	if err := bc.DB.Delete(&box).Error; err != nil {
+		log.Println("Failed to delete box:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete box",
 		})
 	}
 
+	log.Println("Box deleted successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Box deleted successfully",

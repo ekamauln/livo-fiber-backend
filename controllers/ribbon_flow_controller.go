@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -221,6 +222,7 @@ func (rfc *RibbonFlowController) GetRibbonFlows(c fiber.Ctx) error {
 		// Parse start date and set time to beginning of the day
 		parsedStartDate, err := time.Parse("2006-01-02", startDate)
 		if err != nil {
+			log.Println("Invalid start_date format:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid start_date format. Use YYYY-MM-DD.",
@@ -233,6 +235,7 @@ func (rfc *RibbonFlowController) GetRibbonFlows(c fiber.Ctx) error {
 		// Parse end date and set time to end of the day
 		parsedEndDate, err := time.Parse("2006-01-02", endDate)
 		if err != nil {
+			log.Println("Invalid end_date format:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid end_date format. Use YYYY-MM-DD.",
@@ -254,6 +257,7 @@ func (rfc *RibbonFlowController) GetRibbonFlows(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Offset(offset).Limit(limit).Find(&qcRibbons).Error; err != nil {
+		log.Println("Error retrieving ribbon flows:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve ribbon flows",
@@ -294,6 +298,7 @@ func (rfc *RibbonFlowController) GetRibbonFlows(c fiber.Ctx) error {
 		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
 	}
 
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -325,6 +330,7 @@ func (rfc *RibbonFlowController) GetRibbonFlow(c fiber.Ctx) error {
 	trackingNumber := c.Params("trackingNumber")
 
 	if trackingNumber == "" {
+		log.Println("Tracking number is required")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Tracking number is required",
@@ -335,12 +341,14 @@ func (rfc *RibbonFlowController) GetRibbonFlow(c fiber.Ctx) error {
 
 	// Check if qc-ribbon exists
 	if flow.QCRibbon == nil {
+		log.Println("No QC Ribbon found with tracking number:", trackingNumber)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "No QC Ribbon found with the provided tracking number",
 		})
 	}
 
+	log.Println("Ribbon flow retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Ribbon flow retrieved successfully",

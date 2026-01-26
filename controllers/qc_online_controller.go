@@ -5,6 +5,7 @@ import (
 	"livo-fiber-backend/database"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -63,6 +64,7 @@ type QcOnlinesDailyCountResponse struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/onlines/qc-onlines [get]
 func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
+	log.Println("GetQCOnlines called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -131,6 +133,7 @@ func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetQCOnlines completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -158,10 +161,12 @@ func (qcoc *QCOnlineController) GetQCOnlines(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/onlines/qc-onlines/{id} [get]
 func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
+	log.Println("GetQCOnline called")
 	// Parse id parameter
 	id := c.Params("id")
 	var qcOnline models.QCOnline
 	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcOnline).Error; err != nil {
+		log.Println("GetQCOnline - QC Online not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "QC Online with id " + id + " not found.",
@@ -174,6 +179,7 @@ func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 		qcOnline.Order = &order
 	}
 
+	log.Println("GetQCOnline completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "QC Online retrieved successfully",
@@ -196,9 +202,11 @@ func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/onlines/qc-onlines [post]
 func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
+	log.Println("CreateQCOnline called")
 	// Binding request body
 	var req CreateQCOnlineRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateQCOnline - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -346,6 +354,7 @@ func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
 		qcOnline.Order = &orderResponse
 	}
 
+	log.Println("CreateQCOnline completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "QC online created successfully",
@@ -366,6 +375,7 @@ func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/onlines/qc-onlines/chart [get]
 func (qcoc *QCOnlineController) GetChartQCOnlines(c fiber.Ctx) error {
+	log.Println("GetChartQCOnlines called")
 	// Get current month start and end dates
 	now := time.Now()
 	currentYear, currentMonth, _ := now.Date()
@@ -406,6 +416,7 @@ func (qcoc *QCOnlineController) GetChartQCOnlines(c fiber.Ctx) error {
 
 	message := "QC Online chart data " + currentMonth.String() + "  " + strconv.Itoa(currentYear) + " retrieved successfully"
 
+	log.Println("GetChartQCOnlines completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: message,

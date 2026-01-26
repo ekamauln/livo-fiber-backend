@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"os"
 	"strings"
 
 	"time"
@@ -76,6 +77,16 @@ func main() {
 
 	// Get database instance
 	database.GetDB()
+
+	// Create or open log file
+	logFile, err := os.OpenFile("./log.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Error opening log file: %v", err)
+	}
+	defer logFile.Close()
+
+	// Set standard log output to write to both console and file
+	log.SetOutput(logFile)
 
 	// Create Fiber app with go-joson
 	app := fiber.New(fiber.Config{

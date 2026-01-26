@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -55,6 +56,7 @@ func (poc *PickedOrderController) GetPickedOrders(c fiber.Ctx) error {
 		// Parse start date and set time to beginning of the day
 		parsedStartDate, err := time.Parse("2006-01-02", startDate)
 		if err != nil {
+			log.Println("Invalid start_date format:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid start_date format. Use YYYY-MM-DD.",
@@ -67,6 +69,7 @@ func (poc *PickedOrderController) GetPickedOrders(c fiber.Ctx) error {
 		// Parse end date and set time to end of the day
 		parsedEndDate, err := time.Parse("2006-01-02", endDate)
 		if err != nil {
+			log.Println("Invalid end_date format:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid end_date format. Use YYYY-MM-DD.",
@@ -88,6 +91,7 @@ func (poc *PickedOrderController) GetPickedOrders(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Offset(offset).Limit(limit).Find(&pickedOrders).Error; err != nil {
+		log.Println("Error retrieving picked orders:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve picked orders.",
@@ -124,6 +128,7 @@ func (poc *PickedOrderController) GetPickedOrders(c fiber.Ctx) error {
 	}
 
 	// Return paginated response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -155,12 +160,14 @@ func (poc *PickedOrderController) GetPickedOrder(c fiber.Ctx) error {
 	id := c.Params("id")
 	var pickedOrder models.PickedOrder
 	if err := poc.DB.Preload("PickUser").Preload("Order").Preload("Order.OrderDetails").Preload("Order.AssignUser").Preload("Order.PickUser").Preload("Order.PendingUser").Preload("Order.ChangeUser").Preload("Order.DuplicateUser").Preload("Order.CancelUser").First(&pickedOrder, id).Error; err != nil {
+		log.Println("Picked order with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Picked order with id " + id + " not found.",
 		})
 	}
 
+	log.Println("Picked order retrieved successfully.")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Picked order retrieved successfully.",

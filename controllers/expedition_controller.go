@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -71,6 +72,7 @@ func (bc *ExpeditionController) GetExpeditions(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&expeditions).Error; err != nil {
+		log.Println("Error retrieving expeditions:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve expeditions",
@@ -96,6 +98,7 @@ func (bc *ExpeditionController) GetExpeditions(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -126,12 +129,14 @@ func (bc *ExpeditionController) GetExpedition(c fiber.Ctx) error {
 	id := c.Params("id")
 	var expedition models.Expedition
 	if err := bc.DB.Where("id = ?", id).First(&expedition).Error; err != nil {
+		log.Println("Expedition with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Expedition with id " + id + " not found.",
 		})
 	}
 
+	log.Println("Expedition retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Expedition retrieved successfully",
@@ -157,6 +162,7 @@ func (bc *ExpeditionController) CreateExpedition(c fiber.Ctx) error {
 	// Binding request body
 	var req CreateExpeditionRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -169,6 +175,7 @@ func (bc *ExpeditionController) CreateExpedition(c fiber.Ctx) error {
 	// Check for existing expedition with same code
 	var existingExpedition models.Expedition
 	if err := bc.DB.Where("expedition_code = ?", req.ExpeditionCode).First(&existingExpedition).Error; err == nil {
+		log.Println("Expedition with code " + req.ExpeditionCode + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Expedition with code " + req.ExpeditionCode + " already exists.",
@@ -184,12 +191,14 @@ func (bc *ExpeditionController) CreateExpedition(c fiber.Ctx) error {
 	}
 
 	if err := bc.DB.Create(&newExpedition).Error; err != nil {
+		log.Println("Failed to create expedition:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create expedition",
 		})
 	}
 
+	log.Println("Expedition created successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Expedition created successfully",
@@ -217,6 +226,7 @@ func (bc *ExpeditionController) UpdateExpedition(c fiber.Ctx) error {
 	id := c.Params("id")
 	var expedition models.Expedition
 	if err := bc.DB.Where("id = ?", id).First(&expedition).Error; err != nil {
+		log.Println("Expedition with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Expedition with id " + id + " not found.",
@@ -226,6 +236,7 @@ func (bc *ExpeditionController) UpdateExpedition(c fiber.Ctx) error {
 	// Binding request body
 	var req UpdateExpeditionRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -238,6 +249,7 @@ func (bc *ExpeditionController) UpdateExpedition(c fiber.Ctx) error {
 	// Check for existing expedition with same code (excluding current expedition)
 	var existingExpedition models.Expedition
 	if err := bc.DB.Where("expedition_code = ? AND id != ?", req.ExpeditionCode, id).First(&existingExpedition).Error; err == nil {
+		log.Println("Expedition with code " + req.ExpeditionCode + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Expedition with code " + req.ExpeditionCode + " already exists.",
@@ -251,12 +263,14 @@ func (bc *ExpeditionController) UpdateExpedition(c fiber.Ctx) error {
 	expedition.ExpeditionColor = req.ExpeditionColor
 
 	if err := bc.DB.Save(&expedition).Error; err != nil {
+		log.Println("Failed to update expedition:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update expedition",
 		})
 	}
 
+	log.Println("Expedition updated successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Expedition updated successfully",
@@ -283,6 +297,7 @@ func (bc *ExpeditionController) DeleteExpedition(c fiber.Ctx) error {
 	id := c.Params("id")
 	var expedition models.Expedition
 	if err := bc.DB.Where("id = ?", id).First(&expedition).Error; err != nil {
+		log.Println("Expedition with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Expedition with id " + id + " not found.",
@@ -291,12 +306,14 @@ func (bc *ExpeditionController) DeleteExpedition(c fiber.Ctx) error {
 
 	// Delete expedition (also deletes associated records if any due to foreign key constraints)
 	if err := bc.DB.Delete(&expedition).Error; err != nil {
+		log.Println("Failed to delete expedition:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete expedition",
 		})
 	}
 
+	log.Println("Expedition deleted successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Expedition deleted successfully",

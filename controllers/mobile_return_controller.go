@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -70,6 +71,7 @@ func (mrc *MobileReturnController) GetMobileReturns(c fiber.Ctx) error {
 
 	// Execute the query to fetch mobile returns
 	if err := query.Offset(offset).Limit(limit).Find(&mobileReturns).Error; err != nil {
+		log.Println("Error retrieving mobile returns:", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve mobile returns")
 	}
 
@@ -97,6 +99,7 @@ func (mrc *MobileReturnController) GetMobileReturns(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,
@@ -121,12 +124,14 @@ func (mrc *MobileReturnController) GetMobileReturn(c fiber.Ctx) error {
 	id := c.Params("id")
 	var mobileReturn models.Return
 	if err := mrc.DB.Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", id).First(&mobileReturn).Error; err != nil {
+		log.Println("Mobile Return with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Mobile Return with id " + id + " not found.",
 		})
 	}
 
+	log.Println("Mobile Return retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Mobile Return retrieved successfully",
@@ -150,6 +155,7 @@ func (mrc *MobileReturnController) CreateMobileReturn(c fiber.Ctx) error {
 	// Parse request body
 	var req CreateMobileReturnRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -159,6 +165,7 @@ func (mrc *MobileReturnController) CreateMobileReturn(c fiber.Ctx) error {
 	// Check existing return with same new tracking number
 	var existingReturn models.Return
 	if err := mrc.DB.Where("new_tracking_number = ?", req.NewTrackingNumber).First(&existingReturn).Error; err == nil {
+		log.Println("Return with new tracking number " + req.NewTrackingNumber + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Return with new tracking number " + req.NewTrackingNumber + " already exists.",
@@ -174,6 +181,7 @@ func (mrc *MobileReturnController) CreateMobileReturn(c fiber.Ctx) error {
 	}
 
 	if err := mrc.DB.Create(&mobileReturn).Error; err != nil {
+		log.Println("Failed to create mobile return:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create mobile return",
@@ -182,12 +190,14 @@ func (mrc *MobileReturnController) CreateMobileReturn(c fiber.Ctx) error {
 
 	// Load related data for response
 	if err := mrc.DB.Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", mobileReturn.ID).First(&mobileReturn).Error; err != nil {
+		log.Println("Failed to retrieve created mobile return:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve created mobile return",
 		})
 	}
 
+	log.Println("Mobile Return created successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Mobile Return created successfully",

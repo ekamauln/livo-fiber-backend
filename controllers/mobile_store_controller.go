@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -47,6 +48,7 @@ func (mcs *MobileStoreController) GetMobileStores(c fiber.Ctx) error {
 
 	// Execute the query to fetch mobile stores
 	if err := query.Find(&mobileStores).Error; err != nil {
+		log.Println("Error retrieving mobile stores:", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve mobile stores")
 	}
 
@@ -69,6 +71,7 @@ func (mcs *MobileStoreController) GetMobileStores(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessTotaledResponse{
 		Success: true,
 		Message: message,

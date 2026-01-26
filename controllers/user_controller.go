@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -66,6 +67,7 @@ type RemoveRoleRequest struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users [get]
 func (uc *UserController) GetUsers(c fiber.Ctx) error {
+	log.Println("GetUsers called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -96,6 +98,7 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 
 	// Retrieve paginated users
 	if err := query.Offset(offset).Limit(limit).Find(&users).Error; err != nil {
+		log.Println("GetUsers - Failed to retrieve users:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve users",
@@ -121,6 +124,7 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetUsers completed successfully")
 	return c.JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -148,16 +152,19 @@ func (uc *UserController) GetUsers(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id} [get]
 func (uc *UserController) GetUser(c fiber.Ctx) error {
+	log.Println("GetUser called")
 	// Parse id parameter
 	id := c.Params("id")
 	var user models.User
 	if err := uc.DB.Preload("Roles").Where("id = ?", id).First(&user).Error; err != nil {
+		log.Println("GetUser - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User with id " + id + " not found.",
 		})
 	}
 
+	log.Println("GetUser completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User retrieved successfully",
@@ -180,9 +187,11 @@ func (uc *UserController) GetUser(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users [post]
 func (uc *UserController) CreateUser(c fiber.Ctx) error {
+	log.Println("CreateUser called")
 	// Binding request body
 	var req CreateUserRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateUser - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -225,6 +234,7 @@ func (uc *UserController) CreateUser(c fiber.Ctx) error {
 	}
 
 	if err := tx.Create(&newUser).Error; err != nil {
+		log.Println("CreateUser - Failed to create user:", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
@@ -289,12 +299,14 @@ func (uc *UserController) CreateUser(c fiber.Ctx) error {
 
 	// Reload the data
 	if err := uc.DB.Preload("Roles").Where("id = ?", newUser.ID).First(&newUser).Error; err != nil {
+		log.Println("CreateUser - Failed to load user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to load user",
 		})
 	}
 
+	log.Println("CreateUser completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User created successfully",
@@ -318,10 +330,12 @@ func (uc *UserController) CreateUser(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id} [put]
 func (uc *UserController) UpdateUser(c fiber.Ctx) error {
+	log.Println("UpdateUser called")
 	// Parse id parameter
 	id := c.Params("id")
 	var user models.User
 	if err := uc.DB.Preload("Roles").Where("id = ?", id).First(&user).Error; err != nil {
+		log.Println("UpdateUser - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User with id " + id + " not found.",
@@ -373,6 +387,7 @@ func (uc *UserController) UpdateUser(c fiber.Ctx) error {
 	}
 
 	if err := uc.DB.Save(&user).Error; err != nil {
+		log.Println("UpdateUser - Failed to update user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update user",
@@ -382,12 +397,14 @@ func (uc *UserController) UpdateUser(c fiber.Ctx) error {
 	// Reload the data with fresh query
 	var reloadedUser models.User
 	if err := uc.DB.Preload("Roles").Where("id = ?", user.ID).First(&reloadedUser).Error; err != nil {
+		log.Println("UpdateUser - Failed to load user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to load user",
 		})
 	}
 
+	log.Println("UpdateUser completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User updated successfully",
@@ -411,10 +428,12 @@ func (uc *UserController) UpdateUser(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/password [put]
 func (uc *UserController) UpdatePassword(c fiber.Ctx) error {
+	log.Println("UpdatePassword called")
 	// Parse id parameter
 	id := c.Params("id")
 	var user models.User
 	if err := uc.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		log.Println("UpdatePassword - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User with id " + id + " not found.",
@@ -460,6 +479,7 @@ func (uc *UserController) UpdatePassword(c fiber.Ctx) error {
 
 	user.Password = hashedPassword
 	if err := uc.DB.Save(&user).Error; err != nil {
+		log.Println("UpdatePassword - Failed to update password:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update password",
@@ -469,6 +489,7 @@ func (uc *UserController) UpdatePassword(c fiber.Ctx) error {
 	// Clear sessions or tokens if user updated their own password
 	uc.DB.Where("user_id = ?", user.ID).Delete(&models.Session{})
 
+	log.Println("UpdatePassword completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Password updated successfully",
@@ -490,10 +511,12 @@ func (uc *UserController) UpdatePassword(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id} [delete]
 func (uc *UserController) DeleteUser(c fiber.Ctx) error {
+	log.Println("DeleteUser called")
 	// Parse id parameter
 	id := c.Params("id")
 	var user models.User
 	if err := uc.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		log.Println("DeleteUser - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User with id " + id + " not found.",
@@ -505,12 +528,14 @@ func (uc *UserController) DeleteUser(c fiber.Ctx) error {
 
 	// Delete user (also deletes user_roles due to foreign key constraint with ON DELETE CASCADE)
 	if err := uc.DB.Delete(&user).Error; err != nil {
+		log.Println("DeleteUser - Failed to delete user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete user",
 		})
 	}
 
+	log.Println("DeleteUser completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User deleted successfully",
@@ -533,10 +558,12 @@ func (uc *UserController) DeleteUser(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/roles [post]
 func (uc *UserController) AssignRole(c fiber.Ctx) error {
+	log.Println("AssignRole called")
 	// Parse id parameter
 	id := c.Params("id")
 	var user models.User
 	if err := uc.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		log.Println("AssignRole - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User with id " + id + " not found.",
@@ -597,6 +624,7 @@ func (uc *UserController) AssignRole(c fiber.Ctx) error {
 	}
 
 	if err := uc.DB.Create(&newUserRole).Error; err != nil {
+		log.Println("AssignRole - Failed to assign role to user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to assign role to user",
@@ -606,12 +634,14 @@ func (uc *UserController) AssignRole(c fiber.Ctx) error {
 	// Reload the data with fresh query
 	var reloadedUser models.User
 	if err := uc.DB.Preload("Roles").Where("id = ?", user.ID).First(&reloadedUser).Error; err != nil {
+		log.Println("AssignRole - Failed to load user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to load user",
 		})
 	}
 
+	log.Println("AssignRole completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role assigned to user successfully",
@@ -635,10 +665,12 @@ func (uc *UserController) AssignRole(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/roles [delete]
 func (uc *UserController) RemoveRole(c fiber.Ctx) error {
+	log.Println("RemoveRole called")
 	// Parse id parameter
 	id := c.Params("id")
 	var user models.User
 	if err := uc.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		log.Println("RemoveRole - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User with id " + id + " not found.",
@@ -694,6 +726,7 @@ func (uc *UserController) RemoveRole(c fiber.Ctx) error {
 
 	// Remove role from user
 	if err := uc.DB.Delete(&models.UserRole{}, "user_id = ? AND role_id = ?", user.ID, role.ID).Error; err != nil {
+		log.Println("RemoveRole - Failed to remove role from user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to remove role from user",
@@ -703,12 +736,14 @@ func (uc *UserController) RemoveRole(c fiber.Ctx) error {
 	// Reload the data with fresh query
 	var reloadedUser models.User
 	if err := uc.DB.Preload("Roles").Where("id = ?", user.ID).First(&reloadedUser).Error; err != nil {
+		log.Println("RemoveRole - Failed to load user:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to load user",
 		})
 	}
 
+	log.Println("RemoveRole completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Role removed from user successfully",
@@ -731,10 +766,12 @@ func (uc *UserController) RemoveRole(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/sessions [get]
 func (uc *UserController) GetSessions(c fiber.Ctx) error {
+	log.Println("GetSessions called")
 	// Parse id parameter
 	id := c.Params("id")
 	var user models.User
 	if err := uc.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		log.Println("GetSessions - User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User with id " + id + " not found.",
@@ -754,6 +791,7 @@ func (uc *UserController) GetSessions(c fiber.Ctx) error {
 
 	var sessions []models.Session
 	if err := uc.DB.Where("user_id = ?", user.ID).Find(&sessions).Error; err != nil {
+		log.Println("GetSessions - Failed to retrieve user sessions:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve user sessions",
@@ -766,6 +804,7 @@ func (uc *UserController) GetSessions(c fiber.Ctx) error {
 		sessionList[i] = *session.ToResponse()
 	}
 
+	log.Println("GetSessions completed successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User sessions retrieved successfully",
@@ -789,10 +828,12 @@ func (uc *UserController) GetSessions(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/users/{id}/face-register [post]
 func (uc *UserController) RegisterUserFace(c fiber.Ctx) error {
+	log.Println("RegisterUserFace called")
 	// Parse id parameter
 	id := c.Params("id")
 	userID, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
+		log.Println("RegisterUserFace - Invalid user ID:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid user ID",
@@ -851,6 +892,7 @@ func (uc *UserController) RegisterUserFace(c fiber.Ctx) error {
 			IsActive: true,
 		}
 		if err := uc.DB.Create(&userFace).Error; err != nil {
+			log.Println("RegisterUserFace - Failed to register user face:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to register user face",
@@ -859,6 +901,7 @@ func (uc *UserController) RegisterUserFace(c fiber.Ctx) error {
 	} else {
 		userFace.IsActive = true
 		if err := uc.DB.Save(&userFace).Error; err != nil {
+			log.Println("RegisterUserFace - Failed to update user face:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to update user face",
@@ -866,6 +909,7 @@ func (uc *UserController) RegisterUserFace(c fiber.Ctx) error {
 		}
 	}
 
+	log.Println("RegisterUserFace completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User face registered successfully",

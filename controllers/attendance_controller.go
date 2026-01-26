@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -84,6 +85,7 @@ type CheckOutManualResponse struct {
 func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 	file, err := c.FormFile("image")
 	if err != nil {
+		log.Println("Image file is required")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Image file is required",
@@ -92,6 +94,7 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 
 	// Validate mime type
 	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		log.Println("Invalid image file type")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid image file type",
@@ -100,6 +103,7 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 
 	tmpPath := "tmp/search_face.jpg"
 	if err := c.SaveFile(file, tmpPath); err != nil {
+		log.Println("Failed to save image file:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to save image file",
@@ -109,6 +113,7 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 
 	result, err := utils.SendToDeepFaceSearch(tmpPath)
 	if err != nil {
+		log.Println("Face search failed:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Face search failed: %v", err),
@@ -116,6 +121,7 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 	}
 
 	if !result.Matched {
+		log.Println("Face not recognized")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Face not recognized",
@@ -125,12 +131,14 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 	// Fetch user data from database
 	var user models.User
 	if err := ac.DB.Preload("Roles").Where("id = ?", result.UserID).First(&user).Error; err != nil {
+		log.Println("User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
 		})
 	}
 
+	log.Println("Face recognized for user ID:", result.UserID)
 	return c.JSON(fiber.Map{
 		"matched":    true,
 		"userId":     result.UserID,
@@ -153,6 +161,7 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 	file, err := c.FormFile("image")
 	if err != nil {
+		log.Println("Image file is required")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Image file is required",
@@ -161,6 +170,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 
 	// Validate mime type
 	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		log.Println("Invalid image file type")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid image file type",
@@ -169,6 +179,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 
 	tmpPath := "tmp/search_face.jpg"
 	if err := c.SaveFile(file, tmpPath); err != nil {
+		log.Println("Failed to save image file:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to save image file",
@@ -178,6 +189,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 
 	result, err := utils.SendToDeepFaceSearch(tmpPath)
 	if err != nil {
+		log.Println("Face search failed:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Face search failed: %v", err),
@@ -185,6 +197,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 	}
 
 	if !result.Matched {
+		log.Println("Face not recognized")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Face not recognized",
@@ -194,6 +207,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 	// Fetch user data from database
 	var user models.User
 	if err := ac.DB.Preload("Roles").Where("id = ?", result.UserID).First(&user).Error; err != nil {
+		log.Println("User not found")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
@@ -207,6 +221,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	if err := ac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err == nil {
+		log.Println("User already checked in today")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User already checked in today",
@@ -236,6 +251,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 		workStartTime = fulldayWorkStart
 
 		if checkedInTime.After(fulldayCheckInEnd) {
+			log.Println("Check-in time has expired for fullday shift. Deadline was", fulldayCheckInEnd.Format("15:04"))
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   fmt.Sprintf("Check-in time has expired for fullday shift. Deadline was %s", fulldayCheckInEnd.Format("15:04")),
@@ -251,6 +267,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 		workStartTime = halfdayWorkStart
 
 		if checkedInTime.After(halfdayCheckInEnd) {
+			log.Println("Check-in time has expired for halfday shift. Deadline was", halfdayCheckInEnd.Format("15:04"))
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   fmt.Sprintf("Check-in time has expired for halfday shift. Deadline was %s", halfdayCheckInEnd.Format("15:04")),
@@ -262,6 +279,8 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 		}
 	} else {
 		// Not within any valid check-in window
+		log.Println("Not within valid check-in time. Fullday:", fulldayCheckInStart.Format("15:04"), "-", fulldayCheckInEnd.Format("15:04"),
+			"Halfday:", halfdayCheckInStart.Format("15:04"), "-", halfdayCheckInEnd.Format("15:04"))
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error: fmt.Sprintf("Not within valid check-in time. Fullday: %s-%s, Halfday: %s-%s",
@@ -284,6 +303,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 	}
 
 	if err := ac.DB.Create(&newAttendance).Error; err != nil {
+		log.Println("Failed to create attendance record:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create attendance record",
@@ -293,6 +313,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 	// Reload attendace data and related data
 	ac.DB.Preload("User").Preload("Location").Where("id = ?", newAttendance.ID).First(&newAttendance)
 
+	log.Println("User checked in successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked in successfully",
@@ -322,6 +343,7 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 	file, err := c.FormFile("image")
 	if err != nil {
+		log.Println("Image file is required")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Image file is required",
@@ -330,6 +352,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 
 	// Validate mime type
 	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		log.Println("Invalid image file type")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid image file type",
@@ -338,6 +361,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 
 	tmpPath := "tmp/search_face.jpg"
 	if err := c.SaveFile(file, tmpPath); err != nil {
+		log.Println("Failed to save image file:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to save image file",
@@ -347,6 +371,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 
 	result, err := utils.SendToDeepFaceSearch(tmpPath)
 	if err != nil {
+		log.Println("Face search failed:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Face search failed: %v", err),
@@ -354,6 +379,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 	}
 
 	if !result.Matched {
+		log.Println("Face not recognized")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Face not recognized",
@@ -363,6 +389,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 	// Fetch user data from database
 	var user models.User
 	if err := ac.DB.Preload("Roles").Where("id = ?", result.UserID).First(&user).Error; err != nil {
+		log.Println("User not found")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
@@ -375,6 +402,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 	if err := ac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err != nil {
+		log.Println("Attendance record not found or user has not checked in today")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Attendance record not found or user has not checked in today",
@@ -420,6 +448,8 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 		}
 	} else {
 		// Not within valid checkout windows
+		log.Println("Not within valid check-out time. Early checkout:", earlyCheckOut.Format("15:04"), "-", earlyCheckOutEnd.Format("15:04"),
+			"Regular checkout:", regularCheckOutStart.Format("15:04"), "onwards")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error: fmt.Sprintf("Not within valid check-out time. Early checkout: %s-%s, Regular checkout: %s onwards",
@@ -430,6 +460,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 
 	// Update attendance record
 	if err := ac.DB.Save(&attendance).Error; err != nil {
+		log.Println("Failed to update attendance record:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update attendance record",
@@ -439,6 +470,7 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 	// Reload attendace data and related data
 	ac.DB.Preload("User").Preload("Location").Where("id = ?", attendance.ID).First(&attendance)
 
+	log.Println("User checked out successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked out successfully",
@@ -469,6 +501,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 	// Binding request body
 	var req CheckInManualRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -478,6 +511,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 	// Find user by username
 	var user models.User
 	if err := ac.DB.Preload("Roles").Where("username = ?", req.Username).First(&user).Error; err != nil {
+		log.Println("User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
@@ -486,6 +520,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 
 	// Verify password
 	if !utils.CheckPasswordHash(req.Password, user.Password) {
+		log.Println("Invalid password")
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid password",
@@ -500,6 +535,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	if err := ac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err == nil {
+		log.Println("User already checked in today")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User already checked in today",
@@ -529,6 +565,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 		workStartTime = fulldayWorkStart
 
 		if checkedInTime.After(fulldayCheckInEnd) {
+			log.Println("Check-in time has expired for fullday shift. Deadline was", fulldayCheckInEnd.Format("15:04"))
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   fmt.Sprintf("Check-in time has expired for fullday shift. Deadline was %s", fulldayCheckInEnd.Format("15:04")),
@@ -544,6 +581,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 		workStartTime = halfdayWorkStart
 
 		if checkedInTime.After(halfdayCheckInEnd) {
+			log.Println("Check-in time has expired for halfday shift. Deadline was", halfdayCheckInEnd.Format("15:04"))
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   fmt.Sprintf("Check-in time has expired for halfday shift. Deadline was %s", halfdayCheckInEnd.Format("15:04")),
@@ -555,6 +593,8 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 		}
 	} else {
 		// Not within any valid check-in window
+		log.Println("Not within valid check-in time. Fullday:", fulldayCheckInStart.Format("15:04"), "-", fulldayCheckInEnd.Format("15:04"),
+			"Halfday:", halfdayCheckInStart.Format("15:04"), "-", halfdayCheckInEnd.Format("15:04"))
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error: fmt.Sprintf("Not within valid check-in time. Fullday: %s-%s, Halfday: %s-%s",
@@ -577,6 +617,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 	}
 
 	if err := ac.DB.Create(&newAttendance).Error; err != nil {
+		log.Println("Failed to create attendance record:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create attendance record",
@@ -586,6 +627,7 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 	// Reload attendace data and related data
 	ac.DB.Preload("User").Preload("Location").Where("id = ?", newAttendance.ID).First(&newAttendance)
 
+	log.Println("User checked in successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked in successfully",
@@ -614,6 +656,7 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 	// Binding request body
 	var req CheckOutManualRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -623,6 +666,7 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 	// Find user by username
 	var user models.User
 	if err := ac.DB.Preload("Roles").Where("username = ?", req.Username).First(&user).Error; err != nil {
+		log.Println("User not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "User not found",
@@ -631,6 +675,7 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 
 	// Verify password
 	if !utils.CheckPasswordHash(req.Password, user.Password) {
+		log.Println("Invalid password")
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid password",
@@ -644,6 +689,7 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 	if err := ac.DB.Where("user_id = ? AND checked_in >= ? AND checked_in < ? AND checked = ?", user.ID, startOfDay, endOfDay, true).First(&attendance).Error; err != nil {
+		log.Println("Attendance record not found or user has not checked in today")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Attendance record not found or user has not checked in today",
@@ -689,6 +735,8 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 		}
 	} else {
 		// Not within valid checkout windows
+		log.Println("Not within valid check-out time. Early checkout:", earlyCheckOut.Format("15:04"), "-", earlyCheckOutEnd.Format("15:04"),
+			"Regular checkout:", regularCheckOutStart.Format("15:04"), "onwards")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error: fmt.Sprintf("Not within valid check-out time. Early checkout: %s-%s, Regular checkout: %s onwards",
@@ -699,6 +747,7 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 
 	// Update attendance record
 	if err := ac.DB.Save(&attendance).Error; err != nil {
+		log.Println("Failed to update attendance record:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update attendance record",
@@ -708,6 +757,7 @@ func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
 	// Reload attendace data and related data
 	ac.DB.Preload("User").Preload("Location").Where("id = ?", attendance.ID).First(&attendance)
 
+	log.Println("User checked out successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "User checked out successfully",
@@ -755,6 +805,7 @@ func (ac *AttendanceController) GetAttendances(c fiber.Ctx) error {
 		// Parse start date and set time to beginning of the day
 		parsedStartDate, err := time.Parse("2006-01-02", startDate)
 		if err != nil {
+			log.Println("Invalid start_date format. Use YYYY-MM-DD.")
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid start_date format. Use YYYY-MM-DD.",
@@ -767,6 +818,7 @@ func (ac *AttendanceController) GetAttendances(c fiber.Ctx) error {
 		// Parse end date and set time to end of the day
 		parsedEndDate, err := time.Parse("2006-01-02", endDate)
 		if err != nil {
+			log.Println("Invalid end_date format. Use YYYY-MM-DD.")
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid end_date format. Use YYYY-MM-DD.",
@@ -789,6 +841,7 @@ func (ac *AttendanceController) GetAttendances(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Offset(offset).Limit(limit).Find(&attendances).Error; err != nil {
+		log.Println("Failed to retrieve attendances:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve attendances",
@@ -824,6 +877,7 @@ func (ac *AttendanceController) GetAttendances(c fiber.Ctx) error {
 		message += fmt.Sprintf(" (filtered by %s)", strings.Join(filters, " | "))
 	}
 
+	log.Panicln(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -854,12 +908,14 @@ func (ac *AttendanceController) GetAttendanceByID(c fiber.Ctx) error {
 	id := c.Params("id")
 	var attendance models.Attendance
 	if err := ac.DB.Preload("User").Preload("Location").First(&attendance, id).Error; err != nil {
+		log.Println("Attendance record not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Attendance record not found",
 		})
 	}
 
+	log.Println("Attendance record retrieved successfully")
 	return c.JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Attendance record retrieved successfully",

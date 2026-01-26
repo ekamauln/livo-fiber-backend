@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 
@@ -69,6 +70,7 @@ func (lfc *LostFoundController) GetLostfounds(c fiber.Ctx) error {
 
 	// Retrieve paginated records
 	if err := query.Offset(offset).Limit(limit).Find(&lostFounds).Error; err != nil {
+		log.Println("Error retrieving lost and found records:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve lost and found records",
@@ -102,6 +104,7 @@ func (lfc *LostFoundController) GetLostfounds(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -133,12 +136,14 @@ func (lfc *LostFoundController) GetLostfound(c fiber.Ctx) error {
 	id := c.Params("id")
 	var lostFound models.LostFound
 	if err := lfc.DB.Preload("CreateUser").Where("id = ?", id).First(&lostFound).Error; err != nil {
+		log.Println("Lost and found record with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Lost and found record with id " + id + " not found.",
 		})
 	}
 
+	log.Println("Lost and found record retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Lost and found record retrieved successfully",
@@ -163,6 +168,7 @@ func (lfc *LostFoundController) CreateLostfound(c fiber.Ctx) error {
 	// Binding request body
 	var req CreateLostFoundRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -176,6 +182,7 @@ func (lfc *LostFoundController) CreateLostfound(c fiber.Ctx) error {
 	userIDStr := c.Locals("userId").(string)
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
+		log.Println("Invalid user ID:", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid user ID",
@@ -185,6 +192,7 @@ func (lfc *LostFoundController) CreateLostfound(c fiber.Ctx) error {
 	// Check if product SKU exists in products table
 	var product models.Product
 	if err := lfc.DB.Where("sku = ?", req.ProductSKU).First(&product).Error; err != nil {
+		log.Println("Product with SKU " + req.ProductSKU + " does not exist.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Product with SKU " + req.ProductSKU + " does not exist.",
@@ -200,6 +208,7 @@ func (lfc *LostFoundController) CreateLostfound(c fiber.Ctx) error {
 	}
 
 	if err := lfc.DB.Create(&newLostFound).Error; err != nil {
+		log.Println("Failed to create lost and found:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create lost and found",
@@ -211,6 +220,7 @@ func (lfc *LostFoundController) CreateLostfound(c fiber.Ctx) error {
 	lfc.DB.Where("sku = ?", newLostFound.ProductSKU).First(&product)
 	newLostFound.Product = &product
 
+	log.Println("Lost and found created successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Lost and found created successfully",
@@ -238,6 +248,7 @@ func (lfc *LostFoundController) UpdateLostfound(c fiber.Ctx) error {
 	id := c.Params("id")
 	var lostFound models.LostFound
 	if err := lfc.DB.Where("id = ?", id).First(&lostFound).Error; err != nil {
+		log.Println("Lost and found record with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Lost and found record with id " + id + " not found.",
@@ -247,6 +258,7 @@ func (lfc *LostFoundController) UpdateLostfound(c fiber.Ctx) error {
 	// Binding request body
 	var req UpdateLostFoundRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -258,6 +270,7 @@ func (lfc *LostFoundController) UpdateLostfound(c fiber.Ctx) error {
 	lostFound.Reason = req.Reason
 
 	if err := lfc.DB.Save(&lostFound).Error; err != nil {
+		log.Println("Failed to update lost and found:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update lost and found",
@@ -270,6 +283,7 @@ func (lfc *LostFoundController) UpdateLostfound(c fiber.Ctx) error {
 	lfc.DB.Where("sku = ?", lostFound.ProductSKU).First(&product)
 	lostFound.Product = &product
 
+	log.Println("Lost and found updated successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Lost and found updated successfully",
@@ -296,6 +310,7 @@ func (lfc *LostFoundController) DeleteLostfound(c fiber.Ctx) error {
 	id := c.Params("id")
 	var lostFound models.LostFound
 	if err := lfc.DB.Where("id = ?", id).First(&lostFound).Error; err != nil {
+		log.Println("Lost and found record with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Lost and found record with id " + id + " not found.",
@@ -304,12 +319,14 @@ func (lfc *LostFoundController) DeleteLostfound(c fiber.Ctx) error {
 
 	// Delete lost and found
 	if err := lfc.DB.Delete(&lostFound).Error; err != nil {
+		log.Println("Failed to delete lost and found:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to delete lost and found",
 		})
 	}
 
+	log.Println("Lost and found deleted successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Lost and found deleted successfully",

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -56,6 +57,7 @@ type UpdateReturnRequest struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/returns [get]
 func (rc *ReturnController) GetReturns(c fiber.Ctx) error {
+	log.Println("GetReturns called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -106,6 +108,7 @@ func (rc *ReturnController) GetReturns(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Offset(offset).Limit(limit).Find(&returns).Error; err != nil {
+		log.Println("GetReturns - Failed to retrieve returns:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve returns",
@@ -165,6 +168,7 @@ func (rc *ReturnController) GetReturns(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetReturns completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -192,10 +196,12 @@ func (rc *ReturnController) GetReturns(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/returns/{id} [get]
 func (rc *ReturnController) GetReturn(c fiber.Ctx) error {
+	log.Println("GetReturn called")
 	// Parse id parameters
 	id := c.Params("id")
 	var ret models.Return
 	if err := rc.DB.Preload("ReturnDetails").Preload("CreateUser").Preload("UpdateUser").First(&ret, id).Error; err != nil {
+		log.Println("GetReturn - Return not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Return with id " + id + " not found",
@@ -224,6 +230,7 @@ func (rc *ReturnController) GetReturn(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetReturn completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Return retrieved successfully",
@@ -246,9 +253,11 @@ func (rc *ReturnController) GetReturn(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/returns [post]
 func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
+	log.Println("CreateReturn called")
 	// Binding request body
 	var req CreateReturnRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateReturn - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -320,6 +329,7 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 	}
 
 	if err := tx.Create(&ret).Error; err != nil {
+		log.Println("CreateReturn - Failed to create return:", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
@@ -338,6 +348,7 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 			}
 
 			if err := tx.Create(&returnDetail).Error; err != nil {
+				log.Println("CreateReturn - Failed to create return details:", err)
 				tx.Rollback()
 				return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 					Success: false,
@@ -349,6 +360,7 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
+		log.Println("CreateReturn - Failed to commit transaction:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to commit transaction",
@@ -357,6 +369,7 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 
 	// Reload return with details
 	if err := rc.DB.Preload("ReturnDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Preload("UpdateUser").First(&ret, ret.ID).Error; err != nil {
+		log.Println("CreateReturn - Failed to retrieve created return:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve created return",
@@ -385,6 +398,7 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("CreateReturn completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Return created successfully",
@@ -408,10 +422,12 @@ func (rc *ReturnController) CreateReturn(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/returns/{id} [put]
 func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
+	log.Println("UpdateReturn called")
 	// Parse id parameters
 	id := c.Params("id")
 	var ret models.Return
 	if err := rc.DB.Preload("ReturnDetails").First(&ret, id).Error; err != nil {
+		log.Println("UpdateReturn - Return not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Return with id " + id + " not found",
@@ -492,6 +508,7 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 	}
 
 	if err := tx.Save(&ret).Error; err != nil {
+		log.Println("UpdateReturn - Failed to update return:", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
@@ -510,6 +527,7 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 			}
 
 			if err := tx.Create(&returnDetail).Error; err != nil {
+				log.Println("UpdateReturn - Failed to create return details:", err)
 				tx.Rollback()
 				return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 					Success: false,
@@ -521,6 +539,7 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
+		log.Println("UpdateReturn - Failed to commit transaction:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to commit transaction",
@@ -529,6 +548,7 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 
 	// Reload return with details
 	if err := rc.DB.Preload("ReturnDetails").Preload("Channel").Preload("Store").Preload("CreateUser").Preload("UpdateUser").First(&ret, ret.ID).Error; err != nil {
+		log.Println("UpdateReturn - Failed to retrieve updated return:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve updated return",
@@ -557,6 +577,7 @@ func (rc *ReturnController) UpdateReturn(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("UpdateReturn completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Return updated successfully",

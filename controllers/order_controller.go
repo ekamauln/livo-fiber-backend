@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -122,6 +123,7 @@ type DuplicatedOrderResponse struct {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders [get]
 func (oc *OrderController) GetOrders(c fiber.Ctx) error {
+	log.Println("GetOrders called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -218,6 +220,7 @@ func (oc *OrderController) GetOrders(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println("GetOrders completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -263,6 +266,7 @@ func (oc *OrderController) GetOrder(c fiber.Ctx) error {
 		}
 	}
 
+	log.Println("GetOrder completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Order retrieved successfully",
@@ -285,9 +289,11 @@ func (oc *OrderController) GetOrder(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders [post]
 func (oc *OrderController) CreateOrder(c fiber.Ctx) error {
+	log.Println("CreateOrder called")
 	// Binding request body
 	var req CreateOrderRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CreateOrder - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -414,9 +420,11 @@ func (oc *OrderController) CreateOrder(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/bulk [post]
 func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
+	log.Println("BulkCreateOrders called")
 	// Binding request body
 	var req BulkCreateOrdersRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("BulkCreateOrders - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -539,6 +547,7 @@ func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
 	}
 
 	// Return response
+	log.Printf("BulkCreateOrders completed (created=%d, skipped=%d, failed=%d)\n", len(createdOrders), len(skippedOrders), len(failedOrders))
 	return c.Status(statusCode).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: message,
@@ -980,9 +989,11 @@ func (oc *OrderController) CancelOrder(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/assign-picker [post]
 func (oc *OrderController) AssignPicker(c fiber.Ctx) error {
+	log.Println("AssignPicker called")
 	// Binding request body
 	var req AssignPickerRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("AssignPicker - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -1158,6 +1169,7 @@ func (oc *OrderController) PendingPickingOrders(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/assigned [get]
 func (oc *OrderController) GetAssignedOrders(c fiber.Ctx) error {
+	log.Println("GetAssignedOrders called")
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -1244,6 +1256,7 @@ func (oc *OrderController) GetAssignedOrders(c fiber.Ctx) error {
 	}
 
 	// Return response
+	log.Println("GetAssignedOrders completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -1275,6 +1288,7 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 	id := c.Params("id")
 	var order models.Order
 	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
+		log.Println("QCProcessStatusUpdate - Order not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order with id " + id + " not found.",
@@ -1283,6 +1297,7 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 
 	// Check if order processing status allows modification
 	if order.ProcessingStatus == "qc process" {
+		log.Println("QCProcessStatusUpdate - Order is already in qc process status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order is already in qc process status.",
@@ -1291,6 +1306,7 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 
 	// Check if order is canceled
 	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+		log.Println("QCProcessStatusUpdate - Canceled order cannot be updated to qc process status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Canceled order cannot be updated to qc process status.",
@@ -1301,6 +1317,7 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 	order.ProcessingStatus = "qc process"
 
 	if err := oc.DB.Save(&order).Error; err != nil {
+		log.Println("QCProcessStatusUpdate - Failed to update order processing status:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update order processing status",
@@ -1310,12 +1327,14 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 	// Reload the data with fresh query
 	var reloadedOrder models.Order
 	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").First(&reloadedOrder, order.ID).Error; err != nil {
+		log.Println("QCProcessStatusUpdate - Failed to load order:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to load order",
 		})
 	}
 
+	log.Println("QCProcessStatusUpdate completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Order processing status updated to qc process successfully",
@@ -1338,10 +1357,12 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/orders/{id}/status/picking-completed [put]
 func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
+	log.Println("PickingCompletedStatusUpdate called")
 	// Parse id parameter
 	id := c.Params("id")
 	var order models.Order
 	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("id = ?", id).First(&order).Error; err != nil {
+		log.Println("PickingCompletedStatusUpdate - Order not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order with id " + id + " not found.",
@@ -1350,6 +1371,7 @@ func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
 
 	// Check if order processing status allows modification
 	if order.ProcessingStatus == "picking completed" {
+		log.Println("PickingCompletedStatusUpdate - Order is already in picking completed status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order is already in picking completed status.",
@@ -1358,6 +1380,7 @@ func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
 
 	// Check if order is canceled
 	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+		log.Println("PickingCompletedStatusUpdate - Canceled order cannot be updated to picking completed status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Canceled order cannot be updated to picking completed status.",
@@ -1367,6 +1390,7 @@ func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
 	// Update order processing status to "picking completed"
 	order.ProcessingStatus = "picking completed"
 	if err := oc.DB.Save(&order).Error; err != nil {
+		log.Println("PickingCompletedStatusUpdate - Failed to update order processing status:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update order processing status",
@@ -1376,12 +1400,14 @@ func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
 	// Reload the data with fresh query
 	var reloadedOrder models.Order
 	if err := oc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").First(&reloadedOrder, order.ID).Error; err != nil {
+		log.Println("PickingCompletedStatusUpdate - Failed to load order:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to load order",
 		})
 	}
 
+	log.Println("PickingCompletedStatusUpdate completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Order processing status updated to picking completed successfully",

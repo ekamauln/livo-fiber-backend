@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -78,6 +79,7 @@ func (cc *ComplainController) GetComplains(c fiber.Ctx) error {
 		// Parse start date and set time to beginning of the day
 		parsedStartDate, err := time.Parse("2006-01-02", startDate)
 		if err != nil {
+			log.Println("Invalid start_date format:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid start_date format. Use YYYY-MM-DD.",
@@ -90,6 +92,7 @@ func (cc *ComplainController) GetComplains(c fiber.Ctx) error {
 		// Parse end date and set time to end of the day
 		parsedEndDate, err := time.Parse("2006-01-02", endDate)
 		if err != nil {
+			log.Println("Invalid end_date format:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Invalid end_date format. Use YYYY-MM-DD.",
@@ -111,6 +114,7 @@ func (cc *ComplainController) GetComplains(c fiber.Ctx) error {
 
 	// Retrieve paginated results
 	if err := query.Limit(limit).Offset(offset).Find(&complains).Error; err != nil {
+		log.Println("Error retrieving complains:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve complains",
@@ -147,6 +151,7 @@ func (cc *ComplainController) GetComplains(c fiber.Ctx) error {
 	}
 
 	// Return success response
+	log.Println(message)
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessPaginatedResponse{
 		Success: true,
 		Message: message,
@@ -178,12 +183,14 @@ func (cc *ComplainController) GetComplain(c fiber.Ctx) error {
 	id := c.Params("id")
 	var complain models.Complain
 	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", id).First(&complain).Error; err != nil {
+		log.Println("Complain with id " + id + " not found.")
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Complain with id " + id + " not found.",
 		})
 	}
 
+	log.Println("Complain retrieved successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Complain retrieved successfully",
@@ -210,20 +217,21 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 	userIDStr := c.Locals("userId").(string)
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
+		log.Println("Invalid user ID:", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid user ID",
 		})
 	}
-	fmt.Printf("Current user ID: %d", userID)
+	log.Printf("Current user ID: %d\n", userID)
 
 	username := c.Locals("username").(string)
-	fmt.Printf("Current username: %s", username)
+	log.Printf("Current username: %s\n", username)
 
 	// Parse request body
 	var req CreateComplainRequest
 	if err := c.Bind().JSON(&req); err != nil {
-		fmt.Printf("ERROR: Failed to parse request body: %v\n", err)
+		log.Printf("Failed to parse request body: %v\n", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -233,47 +241,47 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 	// Check if tracking number already exists
 	var existingComplain models.Complain
 	if err := cc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingComplain).Error; err == nil {
-		fmt.Println("ERROR: Complain with this tracking number already exists")
+		log.Println("Complain with tracking number " + req.TrackingNumber + " already exists.")
 		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Complain with tracking number " + req.TrackingNumber + " already exists.",
 		})
 	}
-	fmt.Println("Tracking number check passed - no duplicate found")
+	log.Println("Tracking number check passed - no duplicate found")
 
 	// Generate complain code
 	complainCode := utils.GenerateComplainCode(cc.DB, username, "")
-	fmt.Printf("Generated complain code: %s\n", complainCode)
+	log.Printf("Generated complain code: %s\n", complainCode)
 
 	// Start transaction
 	tx := cc.DB.Begin()
 	if tx.Error != nil {
-		fmt.Printf("ERROR: Failed to start transaction: %v\n", tx.Error)
+		log.Printf("Failed to start transaction: %v\n", tx.Error)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to start transaction",
 		})
 	}
-	fmt.Println("Transaction started successfully")
+	log.Println("Transaction started successfully")
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("PANIC: Recovered from panic: %v\n", r)
+			log.Printf("Recovered from panic: %v\n", r)
 			tx.Rollback()
 		}
 	}()
 
 	// Find order by tracking to get OrderGineeID and populate product details
-	fmt.Printf("Looking for order with tracking number: %s\n", req.TrackingNumber)
+	log.Printf("Looking for order with tracking number: %s\n", req.TrackingNumber)
 	var order models.Order
 	if err := tx.Preload("OrderDetails").Where("tracking_number = ?", req.TrackingNumber).First(&order).Error; err != nil {
-		fmt.Printf("ERROR: Order not found: %v\n", err)
+		log.Printf("Order not found: %v\n", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order with tracking number " + req.TrackingNumber + " not found.",
 		})
 	}
-	fmt.Printf("Order found: ID=%d, OrderGineeID=%s, %d details\n", order.ID, order.OrderGineeID, len(order.OrderDetails))
+	log.Printf("Order found: ID=%d, OrderGineeID=%s, %d details\n", order.ID, order.OrderGineeID, len(order.OrderDetails))
 
 	// Create complain record
 	complain := models.Complain{
@@ -285,20 +293,20 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 		CreatedBy:      uint(userID),
 		Reason:         req.Reason,
 	}
-	fmt.Printf("Creating complain: %+v\n", complain)
+	log.Printf("Creating complain: %+v\n", complain)
 
 	if err := tx.Create(&complain).Error; err != nil {
-		fmt.Printf("ERROR: Failed to create complain: %v\n", err)
+		log.Printf("Failed to create complain: %v\n", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to create complain",
 		})
 	}
-	fmt.Printf("Complain created successfully with ID: %d\n", complain.ID)
+	log.Printf("Complain created successfully with ID: %d\n", complain.ID)
 
 	// Populate complain product details from order
-	fmt.Printf("Creating %d complain product details\n", len(order.OrderDetails))
+	log.Printf("Creating %d complain product details\n", len(order.OrderDetails))
 	for i, orderDetail := range order.OrderDetails {
 		complainProductDetail := models.ComplainProductDetail{
 			ComplainID: complain.ID,
@@ -308,16 +316,16 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 		}
 
 		if err := tx.Create(&complainProductDetail).Error; err != nil {
-			fmt.Printf("ERROR: Failed to create product detail %d: %v\n", i, err)
+			log.Printf("Failed to create product detail %d: %v\n", i, err)
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to create complain product details",
 			})
 		}
-		fmt.Printf("Product detail %d created: SKU=%s, Qty=%d\n", i, orderDetail.SKU, orderDetail.Quantity)
+		log.Printf("Product detail %d created: SKU=%s, Qty=%d\n", i, orderDetail.SKU, orderDetail.Quantity)
 	}
-	fmt.Println("All product details created successfully")
+	log.Println("All product details created successfully")
 
 	// Populate complain user details with zero fee charge initially
 	userIDs := make(map[uint]bool) // To avoid duplicate user details
@@ -384,7 +392,7 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 	}
 
 	// Create user details for each unique user found
-	fmt.Printf("Creating %d user details\n", len(userIDs))
+	log.Printf("Creating %d user details\n", len(userIDs))
 	for userIDValue := range userIDs {
 		userDetail := models.ComplainUserDetail{
 			ComplainID: complain.ID,
@@ -393,42 +401,42 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 		}
 
 		if err := tx.Create(&userDetail).Error; err != nil {
-			fmt.Printf("ERROR: Failed to create user detail for userID=%d: %v\n", userIDValue, err)
+			log.Printf("Failed to create user detail for userID=%d: %v\n", userIDValue, err)
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to create complain user details",
 			})
 		}
-		fmt.Printf("User detail created for userID=%d\n", userIDValue)
+		log.Printf("User detail created for userID=%d\n", userIDValue)
 	}
-	fmt.Println("All user details created successfully")
+	log.Println("All user details created successfully")
 
 	// Commit transaction
-	fmt.Println("Committing transaction...")
+	log.Println("Committing transaction...")
 	if err := tx.Commit().Error; err != nil {
-		fmt.Printf("ERROR: Transaction commit failed: %v\n", err)
+		log.Printf("Transaction commit failed: %v\n", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to commit transaction",
 		})
 	}
-	fmt.Println("Transaction committed successfully!")
+	log.Println("Transaction committed successfully!")
 
 	// Load created complain with related data
-	fmt.Println("Loading created complain with related data...")
+	log.Println("Loading created complain with related data...")
 	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
-		fmt.Printf("ERROR: Failed to retrieve created complain: %v\n", err)
+		log.Printf("Failed to retrieve created complain: %v\n", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve created complain",
 		})
 	}
-	fmt.Println("Complain loaded successfully")
+	log.Println("Complain loaded successfully")
 
 	complain.Order = &order
 
-	fmt.Println("=== CreateComplain SUCCESS - Returning 201 ===")
+	log.Println("CreateComplain completed successfully")
 	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Complain created successfully",
@@ -452,10 +460,12 @@ func (cc *ComplainController) CreateComplain(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/complains/{id} [put]
 func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
+	log.Println("UpdateComplain called")
 	// Parse id parameter
 	id := c.Params("id")
 	var complain models.Complain
 	if err := cc.DB.Where("id = ?", id).First(&complain).Error; err != nil {
+		log.Println("UpdateComplain - Complain not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Complain with id " + id + " not found.",
@@ -465,6 +475,7 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 	// Parse request body
 	var req UpdateComplainRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("UpdateComplain - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -475,6 +486,7 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 	tx := cc.DB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
+			log.Printf("UpdateComplain - Recovered from panic: %v\n", r)
 			tx.Rollback()
 		}
 	}()
@@ -484,23 +496,28 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 	complain.TotalFee = &req.TotalFee
 
 	if err := tx.Save(&complain).Error; err != nil {
+		log.Println("UpdateComplain - Failed to update complain:", err)
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update complain",
 		})
 	}
+	log.Println("UpdateComplain - Complain updated successfully")
 
 	// handle user details update
 	if len(req.UserDetails) > 0 {
+		log.Printf("UpdateComplain - Updating %d user details\n", len(req.UserDetails))
 		// Clear existing user details
 		if err := tx.Where("complain_id = ?", complain.ID).Delete(&models.ComplainUserDetail{}).Error; err != nil {
+			log.Println("UpdateComplain - Failed to clear existing user details:", err)
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 				Success: false,
 				Error:   "Failed to clear existing complain user details",
 			})
 		}
+		log.Println("UpdateComplain - Existing user details cleared")
 
 		// Create new user details
 		for _, userDetailReq := range req.UserDetails {
@@ -511,6 +528,7 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 			}
 
 			if err := tx.Create(&userDetail).Error; err != nil {
+				log.Println("UpdateComplain - Failed to create user detail:", err)
 				tx.Rollback()
 				return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 					Success: false,
@@ -518,18 +536,22 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 				})
 			}
 		}
+		log.Println("UpdateComplain - User details created successfully")
 	}
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
+		log.Println("UpdateComplain - Failed to commit transaction:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to commit transaction",
 		})
 	}
+	log.Println("UpdateComplain - Transaction committed successfully")
 
 	// Load updated complain with related data
 	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
+		log.Println("UpdateComplain - Failed to retrieve updated complain:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve updated complain",
@@ -544,6 +566,7 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 		}
 	}
 
+	log.Println("UpdateComplain completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Complain updated successfully",
@@ -568,10 +591,12 @@ func (cc *ComplainController) UpdateComplain(c fiber.Ctx) error {
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/complains/{id}/check [put]
 func (cc *ComplainController) UpdateComplainCheck(c fiber.Ctx) error {
+	log.Println("UpdateComplainCheck called")
 	// Parse id parameter
 	id := c.Params("id")
 	var complain models.Complain
 	if err := cc.DB.Where("id = ?", id).First(&complain).Error; err != nil {
+		log.Println("UpdateComplainCheck - Complain not found:", err)
 		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Complain with id " + id + " not found.",
@@ -581,6 +606,7 @@ func (cc *ComplainController) UpdateComplainCheck(c fiber.Ctx) error {
 	// Parse request body
 	var req UpdateComplainCheckRequest
 	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("UpdateComplainCheck - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -590,20 +616,24 @@ func (cc *ComplainController) UpdateComplainCheck(c fiber.Ctx) error {
 	// Update checked status
 	complain.Checked = req.Checked
 	if err := cc.DB.Save(&complain).Error; err != nil {
+		log.Println("UpdateComplainCheck - Failed to update checked status:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update complain checked status",
 		})
 	}
+	log.Println("UpdateComplainCheck - Checked status updated successfully")
 
 	// Load related data
 	if err := cc.DB.Preload("ComplainProductDetails").Preload("ComplainUserDetails.User").Preload("Channel").Preload("Store").Preload("CreateUser").Where("id = ?", complain.ID).First(&complain, complain.ID).Error; err != nil {
+		log.Println("UpdateComplainCheck - Failed to retrieve updated complain:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to retrieve updated complain",
 		})
 	}
 
+	log.Println("UpdateComplainCheck completed successfully")
 	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
 		Success: true,
 		Message: "Complain checked status updated successfully",
