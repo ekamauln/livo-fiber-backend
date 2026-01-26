@@ -79,7 +79,6 @@ type CheckOutManualResponse struct {
 // @Param image formData file true "Face image to search for"
 // @Success 200 {object} utils.SuccessResponse{data=models.UserResponse}
 // @Failure 400 {object} utils.ErrorResponse
-// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/attendances/search/face [post]
 func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
@@ -149,7 +148,6 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 // @Param image formData file true "Face image to search for"
 // @Success 200 {object} utils.SuccessResponse{data=CheckInResponse}
 // @Failure 400 {object} utils.ErrorResponse
-// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/attendances/checkin/face [post]
 func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
@@ -319,7 +317,6 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 // @Param image formData file true "Face image to search for"
 // @Success 200 {object} utils.SuccessResponse{data=CheckOutResponse}
 // @Failure 400 {object} utils.ErrorResponse
-// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/attendances/checkout/face [put]
 func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
@@ -466,7 +463,6 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 // @Param body body CheckInManualRequest true "Manual Check-In Request Body"
 // @Success 200 {object} utils.SuccessResponse{data=CheckInManualResponse}
 // @Failure 400 {object} utils.ErrorResponse
-// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/attendances/checkin/manual [post]
 func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
@@ -612,7 +608,6 @@ func (ac *AttendanceController) CheckInUserManual(c fiber.Ctx) error {
 // @Param body body CheckOutManualRequest true "Manual Check-Out Request Body"
 // @Success 200 {object} utils.SuccessResponse{data=CheckOutManualResponse}
 // @Failure 400 {object} utils.ErrorResponse
-// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /api/attendances/checkout/manual [put]
 func (ac *AttendanceController) CheckOutUserManual(c fiber.Ctx) error {
