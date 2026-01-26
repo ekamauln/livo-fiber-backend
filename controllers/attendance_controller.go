@@ -117,8 +117,9 @@ func (ac *AttendanceController) SearchUsersByFace(c fiber.Ctx) error {
 	}
 
 	if !result.Matched {
-		return c.JSON(fiber.Map{
-			"matched": false,
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Face not recognized",
 		})
 	}
 
@@ -186,8 +187,9 @@ func (ac *AttendanceController) CheckInUserByFace(c fiber.Ctx) error {
 	}
 
 	if !result.Matched {
-		return c.JSON(fiber.Map{
-			"matched": false,
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Face not recognized",
 		})
 	}
 
@@ -355,8 +357,9 @@ func (ac *AttendanceController) CheckOutUserByFace(c fiber.Ctx) error {
 	}
 
 	if !result.Matched {
-		return c.JSON(fiber.Map{
-			"matched": false,
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Face not recognized",
 		})
 	}
 
