@@ -230,7 +230,7 @@ func (oc *OutboundController) CreateOutbound(c fiber.Ctx) error {
 
 	// Check if tracking number exists in orders and processing status is "qc completed"
 	var order models.Order
-	if err := oc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "qc completed").First(&order).Error; err != nil {
+	if err := oc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "qc_completed").First(&order).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Tracking number does not exist in orders with processing status 'qc completed'",
@@ -314,8 +314,8 @@ func (oc *OutboundController) CreateOutbound(c fiber.Ctx) error {
 		})
 	}
 
-	// Update order status to "outbound completed"
-	if err := oc.DB.Model(&models.Order{}).Where("tracking_number = ?", req.TrackingNumber).Update("processing_status", "outbound completed").Error; err != nil {
+	// Update order processing status to "outbound_completed" and event status to "completed"
+	if err := oc.DB.Model(&models.Order{}).Where("tracking_number = ?", req.TrackingNumber).Update("processing_status", "outbound_completed").Update("event_status", "completed").Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Failed to update order status",

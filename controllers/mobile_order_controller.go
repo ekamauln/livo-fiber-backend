@@ -87,7 +87,7 @@ func (moc *MobileOrderController) GetMyPickingOrders(c fiber.Ctx) error {
 
 	// Base query to get orders assigned to the picker
 	query := moc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").
-		Where("picked_by = ? AND processing_status = ?", userID, "picking process").Order("created_at DESC").Find(&orders)
+		Where("picked_by = ? AND processing_status = ?", userID, "picking_progress").Order("created_at DESC").Find(&orders)
 
 	// Get total count
 	var total int64
@@ -224,7 +224,7 @@ func (moc *MobileOrderController) CompletePickingOrder(c fiber.Ctx) error {
 	userIDUint := uint(userID)
 	order.PickedBy = &userIDUint
 	order.PickedAt = &now
-	order.ProcessingStatus = "picking completed"
+	order.ProcessingStatus = "picking_completed"
 
 	if err := tx.Save(&order).Error; err != nil {
 		log.Println("CompletePickingOrder - Failed to update order status:", err)
@@ -323,11 +323,11 @@ func (moc *MobileOrderController) PendingPickOrder(c fiber.Ctx) error {
 	}
 
 	// Check if status is picking process
-	if order.ProcessingStatus != "picking process" {
-		log.Println("PendingPickOrder - Order not in picking process status")
+	if order.ProcessingStatus != "picking_progress" {
+		log.Println("PendingPickOrder - Order not in picking progress status")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
-			Error:   "Order not in picking process status",
+			Error:   "Order not in picking progress status",
 		})
 	}
 
@@ -374,7 +374,7 @@ func (moc *MobileOrderController) PendingPickOrder(c fiber.Ctx) error {
 	now := time.Now()
 	order.PendingBy = &coordinatorID
 	order.PendingAt = &now
-	order.ProcessingStatus = "pending picking"
+	order.ProcessingStatus = "picking_pending"
 
 	if err := moc.DB.Save(&order).Error; err != nil {
 		log.Println("PendingPickOrder - Failed to update order status:", err)
@@ -485,7 +485,7 @@ func (moc *MobileOrderController) BulkAssignPicker(c fiber.Ctx) error {
 		}
 
 		// Validate order status
-		if order.EventStatus != nil && *order.EventStatus == "canceled" {
+		if order.EventStatus == "canceled" {
 			skippedOrders = append(skippedOrders, SkippedAssignment{
 				Index:          i,
 				TrackingNumber: trackingNumber,
@@ -495,7 +495,7 @@ func (moc *MobileOrderController) BulkAssignPicker(c fiber.Ctx) error {
 		}
 
 		// Only allow assignment if order is "ready to pick" or "pending picking"
-		if order.ProcessingStatus != "ready to pick" && order.ProcessingStatus != "pending picking" {
+		if order.ProcessingStatus != "ready_to_pick" && order.ProcessingStatus != "picking_pending" {
 			skippedOrders = append(skippedOrders, SkippedAssignment{
 				Index:          i,
 				TrackingNumber: trackingNumber,
@@ -508,7 +508,7 @@ func (moc *MobileOrderController) BulkAssignPicker(c fiber.Ctx) error {
 		order.PickedBy = &req.PickerID
 		order.AssignedAt = &now
 		order.AssignedBy = &assignerIDUint
-		order.ProcessingStatus = "picking process"
+		order.ProcessingStatus = "picking_progress"
 
 		if err := moc.DB.Save(&order).Error; err != nil {
 			failedOrders = append(failedOrders, FailedAssignment{
@@ -614,7 +614,7 @@ func (moc *MobileOrderController) GetMobilePickedOrders(c fiber.Ctx) error {
 	var pickedOrders []models.Order
 
 	// Base query to get picked orders
-	query := moc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("processing_status = ?", "picking process").Where("assigned_by = ?", UserID)
+	query := moc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("PickUser").Preload("AssignUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("processing_status = ?", "picking_progress").Where("assigned_by = ?", UserID)
 
 	// Apply search filter if provided
 	search := c.Query("search", "")

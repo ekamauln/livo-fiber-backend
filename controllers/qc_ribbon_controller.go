@@ -244,17 +244,17 @@ func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 		})
 	}
 
-	// Check if tracking number exists in orders and have processing status "picking completed"
+	// Check if tracking number exists in orders and have processing status "picking_completed"
 	var order models.Order
-	if err := qcrc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "picking completed").First(&order).Error; err != nil {
+	if err := qcrc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "picking_completed").First(&order).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "No order found with tracking number " + req.TrackingNumber + " in picking completed status.",
 		})
 	}
 
-	// Check if order processing status is already "qc completed"
-	if order.ProcessingStatus == "qc completed" {
+	// Check if order processing_status is already "qc_completed"
+	if order.ProcessingStatus == "qc_completed" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order with tracking number " + req.TrackingNumber + " has already been QC completed.",
@@ -323,8 +323,8 @@ func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
 		})
 	}
 
-	// Update order processing status to "qc completed"
-	if err := tx.Model(&models.Order{}).Where("tracking_number = ?", req.TrackingNumber).Update("processing_status", "qc completed").Error; err != nil {
+	// Update order processing status to "qc_completed"
+	if err := tx.Model(&models.Order{}).Where("tracking_number = ?", req.TrackingNumber).Update("processing_status", "qc_completed").Error; err != nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
 			Success: false,

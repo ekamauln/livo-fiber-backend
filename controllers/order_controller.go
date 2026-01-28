@@ -344,7 +344,8 @@ func (oc *OrderController) CreateOrder(c fiber.Ctx) error {
 	// Create new order
 	newOrder := models.Order{
 		OrderGineeID:     req.OrderGineeID,
-		ProcessingStatus: "ready to pick",
+		ProcessingStatus: "ready_to_pick",
+		EventStatus:      "in_progress",
 		Channel:          req.Channel,
 		Store:            req.Store,
 		Buyer:            req.Buyer,
@@ -458,7 +459,8 @@ func (oc *OrderController) BulkCreateOrders(c fiber.Ctx) error {
 		// Create order
 		order := models.Order{
 			OrderGineeID:     orderReq.OrderGineeID,
-			ProcessingStatus: "ready to pick",
+			ProcessingStatus: "ready_to_pick",
+			EventStatus:      "in_progress",
 			Channel:          orderReq.Channel,
 			Store:            orderReq.Store,
 			Buyer:            orderReq.Buyer,
@@ -601,7 +603,7 @@ func (oc *OrderController) UpdateOrder(c fiber.Ctx) error {
 	}
 
 	// Check if order processing status allows modification
-	if order.ProcessingStatus == "picking process" || order.ProcessingStatus == "qc process" {
+	if order.ProcessingStatus == "picking_progress" || order.ProcessingStatus == "qc_progress" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order cannot be modified in " + order.ProcessingStatus + " status.",
@@ -609,7 +611,7 @@ func (oc *OrderController) UpdateOrder(c fiber.Ctx) error {
 	}
 
 	// Check if order is canceled
-	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+	if order.EventStatus == "canceled" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Canceled order cannot be modified.",
@@ -736,7 +738,7 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 	}
 
 	// Check if order processing status allows modification
-	if order.ProcessingStatus == "picking process" || order.ProcessingStatus == "qc process" {
+	if order.ProcessingStatus == "picking_progress" || order.ProcessingStatus == "qc_progress" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order cannot be duplicated in " + order.ProcessingStatus + " status.",
@@ -744,7 +746,7 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 	}
 
 	// Check if order is canceled
-	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+	if order.EventStatus == "canceled" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Canceled order cannot be duplicated.",
@@ -752,7 +754,7 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 	}
 
 	// Check if order event status has been duplicated
-	if order.EventStatus != nil && *order.EventStatus == "duplicated" {
+	if order.EventStatus == "duplicated" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order has already been duplicated.",
@@ -775,7 +777,7 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 	now := time.Now()
 	userIDUint := uint(userID)
 	eventStatusDuplicated := "duplicated"
-	order.EventStatus = &eventStatusDuplicated
+	order.EventStatus = eventStatusDuplicated
 	order.OrderGineeID = order.OrderGineeID + "-X2"
 	order.TrackingNumber = newTrackingNumber
 	order.DuplicatedBy = &userIDUint
@@ -806,7 +808,7 @@ func (oc *OrderController) DuplicateOrder(c fiber.Ctx) error {
 		Courier:          order.Courier,
 		TrackingNumber:   originalTrackingNumber,
 		SentBefore:       order.SentBefore,
-		EventStatus:      &duplicatedEventStatus,
+		EventStatus:      duplicatedEventStatus,
 		DuplicatedBy:     &userIDUint,
 		DuplicatedAt:     &now,
 	}
@@ -902,7 +904,7 @@ func (oc *OrderController) CancelOrder(c fiber.Ctx) error {
 	}
 
 	// Check if order status allows modification
-	if order.ProcessingStatus == "picking process" || order.ProcessingStatus == "qc process" {
+	if order.ProcessingStatus == "picking_progress" || order.ProcessingStatus == "qc_progress" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order status does not allow cancellation",
@@ -910,7 +912,7 @@ func (oc *OrderController) CancelOrder(c fiber.Ctx) error {
 	}
 
 	// Check if order is already cancelled
-	if order.EventStatus != nil && *order.EventStatus == "cancelled" {
+	if order.EventStatus == "cancelled" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order is already cancelled",
@@ -929,7 +931,7 @@ func (oc *OrderController) CancelOrder(c fiber.Ctx) error {
 	now := time.Now()
 	userIDUint := uint(userID)
 	eventStatusCanceled := "canceled"
-	order.EventStatus = &eventStatusCanceled
+	order.EventStatus = eventStatusCanceled
 	order.CanceledBy = &userIDUint
 	order.CanceledAt = &now
 
@@ -1029,7 +1031,7 @@ func (oc *OrderController) AssignPicker(c fiber.Ctx) error {
 	}
 
 	// Check if order processing status allows assignment
-	if order.ProcessingStatus != "ready to pick" && order.ProcessingStatus != "pending picking" {
+	if order.ProcessingStatus != "ready_to_pick" && order.ProcessingStatus != "picking_pending" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order cannot be assigned a picker in " + order.ProcessingStatus + " status.",
@@ -1037,7 +1039,7 @@ func (oc *OrderController) AssignPicker(c fiber.Ctx) error {
 	}
 
 	// Check if order is canceled
-	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+	if order.EventStatus == "canceled" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Canceled order cannot be assigned a picker.",
@@ -1050,7 +1052,7 @@ func (oc *OrderController) AssignPicker(c fiber.Ctx) error {
 	order.AssignedBy = &userIDUint
 	order.AssignedAt = &now
 	order.PickedBy = &req.PickerID
-	order.ProcessingStatus = "picking process"
+	order.ProcessingStatus = "picking_progress"
 
 	if err := oc.DB.Save(&order).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
@@ -1110,8 +1112,8 @@ func (oc *OrderController) PendingPickingOrders(c fiber.Ctx) error {
 		})
 	}
 
-	// Check if order processing status is "picking process"
-	if order.ProcessingStatus != "picking process" {
+	// Check if order processing status is "picking_progress"
+	if order.ProcessingStatus != "picking_progress" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Order cannot be marked as pending in " + order.ProcessingStatus + " status.",
@@ -1121,7 +1123,7 @@ func (oc *OrderController) PendingPickingOrders(c fiber.Ctx) error {
 	// Update order to pending picking
 	now := time.Now()
 	userIDUint := uint(userID)
-	order.ProcessingStatus = "pending picking"
+	order.ProcessingStatus = "picking_pending"
 	order.PendingBy = &userIDUint
 	order.PendingAt = &now
 	order.PickedBy = nil
@@ -1178,7 +1180,7 @@ func (oc *OrderController) GetAssignedOrders(c fiber.Ctx) error {
 	var orders []models.Order
 
 	// Build base query
-	query := oc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Order("created_at DESC").Where("processing_status = ?", "picking process")
+	query := oc.DB.Model(&models.Order{}).Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Order("created_at DESC").Where("processing_status = ?", "picking_progress")
 
 	// Date range filter if provided
 	startDate := c.Query("start_date", "")
@@ -1296,7 +1298,7 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 	}
 
 	// Check if order processing status allows modification
-	if order.ProcessingStatus == "qc process" {
+	if order.ProcessingStatus == "qc_progress" {
 		log.Println("QCProcessStatusUpdate - Order is already in qc process status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
@@ -1305,7 +1307,7 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 	}
 
 	// Check if order is canceled
-	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+	if order.EventStatus == "canceled" {
 		log.Println("QCProcessStatusUpdate - Canceled order cannot be updated to qc process status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
@@ -1314,7 +1316,7 @@ func (oc *OrderController) QCProcessStatusUpdate(c fiber.Ctx) error {
 	}
 
 	// Update order processing status to "qc process"
-	order.ProcessingStatus = "qc process"
+	order.ProcessingStatus = "qc_progress"
 
 	if err := oc.DB.Save(&order).Error; err != nil {
 		log.Println("QCProcessStatusUpdate - Failed to update order processing status:", err)
@@ -1370,7 +1372,7 @@ func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
 	}
 
 	// Check if order processing status allows modification
-	if order.ProcessingStatus == "picking completed" {
+	if order.ProcessingStatus == "picking_completed" {
 		log.Println("PickingCompletedStatusUpdate - Order is already in picking completed status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
@@ -1379,7 +1381,7 @@ func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
 	}
 
 	// Check if order is canceled
-	if order.EventStatus != nil && *order.EventStatus == "canceled" {
+	if order.EventStatus == "canceled" {
 		log.Println("PickingCompletedStatusUpdate - Canceled order cannot be updated to picking completed status.")
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
 			Success: false,
@@ -1387,8 +1389,8 @@ func (oc *OrderController) PickingCompletedStatusUpdate(c fiber.Ctx) error {
 		})
 	}
 
-	// Update order processing status to "picking completed"
-	order.ProcessingStatus = "picking completed"
+	// Update order processing status to "picking_completed"
+	order.ProcessingStatus = "picking_completed"
 	if err := oc.DB.Save(&order).Error; err != nil {
 		log.Println("PickingCompletedStatusUpdate - Failed to update order processing status:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{

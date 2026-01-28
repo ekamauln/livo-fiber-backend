@@ -5,8 +5,8 @@ import "time"
 type Order struct {
 	ID               uint       `gorm:"primaryKey" json:"id"`
 	OrderGineeID     string     `gorm:"uniqueIndex;not null;type:varchar(100)" json:"order_ginee_id"`
-	ProcessingStatus string     `gorm:"not null;type:varchar(50)" json:"processing_status"`
-	EventStatus      *string    `gorm:"default:null;type:varchar(50)" json:"event_status"`
+	ProcessingStatus string     `gorm:"not null;type:varchar(50);default:ready_to_pick" json:"processing_status"`
+	EventStatus      string     `gorm:"not null;type:varchar(50);default:in_progress" json:"event_status"`
 	Channel          string     `gorm:"type:varchar(100)" json:"channel"`
 	Store            string     `gorm:"type:varchar(100)" json:"store"`
 	Buyer            string     `gorm:"type:varchar(150)" json:"buyer"`
@@ -57,7 +57,7 @@ type OrderResponse struct {
 	ID               uint                  `json:"id"`
 	OrderGineeID     string                `json:"orderGineeId"`
 	ProcessingStatus string                `json:"processingStatus"`
-	EventStatus      *string               `json:"eventStatus"`
+	EventStatus      string                `json:"eventStatus"`
 	Channel          string                `json:"channel"`
 	Store            string                `json:"store"`
 	Buyer            string                `json:"buyer"`
@@ -108,6 +108,7 @@ func (o *Order) ToOrderResponse() *OrderResponse {
 		// Include product data if exists
 		if detail.Product != nil {
 			detailResp.Product = &ProductResponse{
+				ID:        detail.Product.ID,
 				SKU:       detail.Product.SKU,
 				Name:      detail.Product.Name,
 				Image:     detail.Product.Image,
@@ -168,11 +169,43 @@ func (o *Order) ToOrderResponse() *OrderResponse {
 		canceledAt = &formatted
 	}
 
+	// Processing status visual handler
+	var processingStatus string
+	switch o.ProcessingStatus {
+	case "ready_to_pick":
+		processingStatus = "Ready to Pick"
+	case "picking_progress":
+		processingStatus = "Picking in Progress"
+	case "picking_pending":
+		processingStatus = "Picking is Pending"
+	case "picking_completed":
+		processingStatus = "Picking Completed"
+	case "qc_progress":
+		processingStatus = "QC in Progress"
+	case "qc_completed":
+		processingStatus = "QC Completed"
+	case "outbound_completed":
+		processingStatus = "Outbound Completed"
+	}
+
+	// Event status visual handler
+	var eventStatus string
+	switch o.EventStatus {
+	case "in_progress":
+		eventStatus = "In Progress"
+	case "completed":
+		eventStatus = "Completed"
+	case "pending":
+		eventStatus = "Pending"
+	case "canceled":
+		eventStatus = "Canceled"
+	}
+
 	return &OrderResponse{
 		ID:               o.ID,
 		OrderGineeID:     o.OrderGineeID,
-		ProcessingStatus: o.ProcessingStatus,
-		EventStatus:      o.EventStatus,
+		ProcessingStatus: processingStatus,
+		EventStatus:      eventStatus,
 		Channel:          o.Channel,
 		Store:            o.Store,
 		Buyer:            o.Buyer,

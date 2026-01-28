@@ -42,6 +42,7 @@ type RibbonOutboundFlowInfo struct {
 type RibbonOrderFlowInfo struct {
 	TrackingNumber   string              `json:"trackingNumber"`
 	ProcessingStatus string              `json:"processingStatus"`
+	EventStatus      string              `json:"eventStatus"`
 	OrderGineeID     string              `json:"orderGineeId"`
 	Complained       bool                `json:"complained"`
 	CreatedAt        string              `json:"createdAt"`
@@ -114,6 +115,38 @@ func (rfc *RibbonFlowController) BuildRibbonFlow(trackingNumber string) RibbonFl
 			OrderGineeID:     order.OrderGineeID,
 			Complained:       order.Complained,
 			CreatedAt:        order.CreatedAt.Format("02-01-2006 15:04:05"),
+		}
+
+		// Processing status human readable
+		switch order.ProcessingStatus {
+		case "ready_to_pick":
+			orderInfo.ProcessingStatus = "Ready to Pick"
+		case "picking_progress":
+			orderInfo.ProcessingStatus = "Picking in Progress"
+		case "picking_pending":
+			orderInfo.ProcessingStatus = "Picking is Pending"
+		case "picking_completed":
+			orderInfo.ProcessingStatus = "Picking Completed"
+		case "qc_progress":
+			orderInfo.ProcessingStatus = "QC in Progress"
+		case "qc_completed":
+			orderInfo.ProcessingStatus = "QC Completed"
+		case "outbound_completed":
+			orderInfo.ProcessingStatus = "Outbound Completed"
+		}
+
+		//Event status human readable
+		switch order.EventStatus {
+		case "in_progress":
+			orderInfo.EventStatus = "In Progress"
+		case "completed":
+			orderInfo.EventStatus = "Completed"
+		case "cancelled":
+			orderInfo.EventStatus = "Cancelled"
+		case "pending":
+			orderInfo.EventStatus = "Pending"
+		case "duplicated":
+			orderInfo.EventStatus = "Duplicated"
 		}
 
 		// user visual handlers
