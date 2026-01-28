@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"fmt"
-	"livo-fiber-backend/database"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"log"
@@ -23,14 +22,22 @@ func NewQCRibbonController(db *gorm.DB) *QCRibbonController {
 }
 
 // Request structs
-type CreateQCRibbonRequest struct {
-	TrackingNumber string                  `json:"trackingNumber" validate:"required"`
-	Details        []QCRibbonDetailRequest `json:"details" validate:"required,dive,required"`
+type QCRibbonStartRequest struct {
+	TrackingNumber string `json:"trackingNumber" validate:"required"`
 }
 
-type QCRibbonDetailRequest struct {
+type ValidateQCRibbonProductsRequest struct {
+	SKU      string `json:"sku" validate:"required"`
+	Quantity int    `json:"quantity" validate:"required,min=1"`
+}
+
+type CreateQCRibbonDetail struct {
 	BoxID    uint `json:"boxId" validate:"required"`
 	Quantity int  `json:"quantity" validate:"required,min=1"`
+}
+
+type CreateQCRibbonDetailRequest struct {
+	Details []CreateQCRibbonDetail `json:"details" validate:"required,dive,required"`
 }
 
 // Unique response structs
@@ -187,181 +194,6 @@ func (qcrc *QCRibbonController) GetQCRibbon(c fiber.Ctx) error {
 	})
 }
 
-// CreateQCRibbon creates a new QC Ribbon
-// @Summary Create QC Ribbon
-// @Description Create a new QC Ribbon
-// @Tags Ribbons
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param qcRibbon body CreateQCRibbonRequest true "QC Ribbon details"
-// @Success 201 {object} utils.SuccessResponse{data=models.QCRibbonResponse}
-// @Failure 400 {object} utils.ErrorResponse
-// @Failure 401 {object} utils.ErrorResponse
-// @Failure 409 {object} utils.ErrorResponse
-// @Failure 500 {object} utils.ErrorResponse
-// @Router /api/ribbons/qc-ribbons [post]
-func (qcrc *QCRibbonController) CreateQCRibbon(c fiber.Ctx) error {
-	log.Println("CreateQCRibbon called")
-	// Binding request body
-	var req CreateQCRibbonRequest
-	if err := c.Bind().JSON(&req); err != nil {
-		log.Println("CreateQCRibbon - Invalid request body:", err)
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-	}
-
-	// Convert tracking number to uppercase and trim spaces
-	req.TrackingNumber = strings.ToUpper(strings.TrimSpace(req.TrackingNumber))
-
-	// Check for existing QC Ribbon with same tracking number
-	var existingQCRibbon models.QCRibbon
-	if err := qcrc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingQCRibbon).Error; err == nil {
-		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "QC Ribbon with the same " + req.TrackingNumber + " already exists.",
-		})
-	}
-
-	// Get current logged in user from context
-	userIDStr := c.Locals("userId").(string)
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Invalid user ID",
-		})
-	}
-
-	// Check if tracking number already exists in QC Online
-	var existingQCOnline models.QCOnline
-	if err := qcrc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingQCOnline).Error; err == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Tracking number " + req.TrackingNumber + " already exists in QC Online records.",
-		})
-	}
-
-	// Check if tracking number exists in orders and have processing status "picking_completed"
-	var order models.Order
-	if err := qcrc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "picking_completed").First(&order).Error; err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "No order found with tracking number " + req.TrackingNumber + " in picking completed status.",
-		})
-	}
-
-	// Check if order processing_status is already "qc_completed"
-	if order.ProcessingStatus == "qc_completed" {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Order with tracking number " + req.TrackingNumber + " has already been QC completed.",
-		})
-	}
-
-	// Validate all boxes exist and no duplicates
-	boxIDSet := make(map[uint]bool)
-	for _, detailReq := range req.Details {
-		// Check for duplicate box IDs in the request
-		if boxIDSet[detailReq.BoxID] {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-				Success: false,
-				Error:   "Duplicate box ID in the request",
-			})
-		}
-		boxIDSet[detailReq.BoxID] = true
-
-		// Check if box exists
-		var box models.Box
-		if err := qcrc.DB.Where("id = ?", detailReq.BoxID).First(&box).Error; err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-				Success: false,
-				Error:   "Box with ID " + strconv.FormatUint(uint64(detailReq.BoxID), 10) + " does not exist",
-			})
-		}
-
-		// Validate quantity
-		if detailReq.Quantity <= 0 {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-				Success: false,
-				Error:   "Quantity must be greater than zero for box ID " + strconv.FormatUint(uint64(detailReq.BoxID), 10),
-			})
-		}
-	}
-
-	// Start database transaction
-	tx := database.DB.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Create QCRibbon record
-	qcRibbon := models.QCRibbon{
-		TrackingNumber: req.TrackingNumber,
-		QCBy:           uint(userID),
-	}
-
-	// Create QCRibbonDetails records
-	for _, detailReq := range req.Details {
-		qcRibbonDetail := models.QCRibbonDetail{
-			BoxID:    detailReq.BoxID,
-			Quantity: detailReq.Quantity,
-		}
-		qcRibbon.QCRibbonDetails = append(qcRibbon.QCRibbonDetails, qcRibbonDetail)
-	}
-
-	// Create records in the database (GORM will cascade to details automatically)
-	if err := tx.Create(&qcRibbon).Error; err != nil {
-		tx.Rollback()
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to create QC ribbon record",
-		})
-	}
-
-	// Update order processing status to "qc_completed"
-	if err := tx.Model(&models.Order{}).Where("tracking_number = ?", req.TrackingNumber).Update("processing_status", "qc_completed").Error; err != nil {
-		tx.Rollback()
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to update order processing status",
-		})
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to commit transaction",
-		})
-	}
-
-	// Reload the created record with all relationships for response
-	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").First(&qcRibbon, qcRibbon.ID).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to load created QC ribbon",
-		})
-	}
-
-	// Load order by tracking number
-	var orderResponse models.Order
-	if err := qcrc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcRibbon.TrackingNumber).First(&orderResponse).Error; err == nil {
-		qcRibbon.Order = &orderResponse
-	}
-
-	log.Println("CreateQCRibbon completed successfully")
-	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
-		Success: true,
-		Message: "QC ribbon created successfully",
-		Data:    qcRibbon.ToResponse(),
-	})
-}
-
 // GetChartQcRibbons retrieves QC Ribbon data for charting
 // @Summary Get Chart QC Ribbons
 // @Description Retrieve QC Ribbon data for charting
@@ -421,5 +253,473 @@ func (qcrc *QCRibbonController) GetChartQCRibbons(c fiber.Ctx) error {
 		Success: true,
 		Message: message,
 		Data:    response,
+	})
+}
+
+// QCRibbonStart Starting QC Ribbon processing for an order
+// @Summary Start QC Ribbon Processing
+// @Description Mark an order as in QC Ribbon processing
+// @Tags Ribbons
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param trackingNumber body QCRibbonStartRequest true "Tracking Number"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCRibbonResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/ribbons/qc-ribbons/start [post]
+func (qcrc *QCRibbonController) QCRibbonStart(c fiber.Ctx) error {
+	log.Println("QCRibbonStart called")
+
+	// Binding request body
+	var req QCRibbonStartRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("QCRibbonStart - Invalid request body:", err)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Getting current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Convert tracking number to uppercase and trim spaces
+	req.TrackingNumber = strings.ToUpper(strings.TrimSpace(req.TrackingNumber))
+
+	// Duplicate check in QCRibbon
+	var existingQCRibbon models.QCRibbon
+	if err := qcrc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingQCRibbon).Error; err == nil {
+		log.Println("QCRibbonStart - Tracking number already in QC Ribbon records:", req.TrackingNumber)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Tracking number " + req.TrackingNumber + " is already in QC Ribbon records.",
+		})
+	}
+
+	// Check if tracking number exists in orders and have processing status "picking_completed"
+	var order models.Order
+	if err := qcrc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "picking_completed").First(&order).Error; err != nil {
+		log.Println("QCRibbonStart - No order found with tracking number in picking completed status:", req.TrackingNumber)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "No order found with tracking number " + req.TrackingNumber + " in picking completed status.",
+		})
+	}
+
+	// Start database transaction
+	tx := qcrc.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create QCRibbon record and update order processing status to "qc_progress"
+	qcRibbon := models.QCRibbon{
+		TrackingNumber: req.TrackingNumber,
+		QCBy:           uint(userID),
+		Status:         "in_progress",
+		Complained:     false,
+	}
+
+	if err := tx.Create(&qcRibbon).Error; err != nil {
+		tx.Rollback()
+		log.Println("QCRibbonStart - Failed to create QC Ribbon record:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to start QC Ribbon processing",
+		})
+	}
+	order.ProcessingStatus = "qc_progress"
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		log.Println("QCRibbonStart - Failed to update order processing status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to start QC Ribbon processing",
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		log.Println("QCRibbonStart - Failed to commit transaction:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to start QC Ribbon processing",
+		})
+	}
+
+	log.Println("QCRibbonStart completed successfully")
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Ribbon processing started successfully",
+		Data:    qcRibbon.ToResponse(),
+	})
+}
+
+// ValidateQCRibbonProduct validates the QC Ribbon Details items or products by SKU and quantity
+// @Summary Validate QC Ribbon Items
+// @Description Validate the QC Ribbon Details items or products by SKU and quantity
+// @Tags Ribbons
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "QC Ribbon ID"
+// @Param qcRibbon body ValidateQCRibbonProductsRequest true "QC Ribbon Details Items"
+// @Success 200 {object} utils.SuccessResponse(data=models.QCRibbonResponse)
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/ribbons/qc-ribbons/{id}/validate [put]
+func (qcrc *QCRibbonController) ValidateQCRibbonProduct(c fiber.Ctx) error {
+	log.Println("ValidateQCRibbonProduct called")
+	// Parse id parameter
+	id := c.Params("id")
+	var qcRibbon models.QCRibbon
+	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcRibbon).Error; err != nil {
+		log.Println("ValidateQCRibbonProduct - QC Ribbon not found:", err)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Ribbon with id " + id + " not found.",
+		})
+	}
+
+	// Binding request body
+	var req ValidateQCRibbonProductsRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("ValidateQCRibbonProduct - Invalid request body:", err)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Check if QC Ribbon is in progress or pending
+	if qcRibbon.Status != "in_progress" && qcRibbon.Status != "pending" {
+		log.Println("ValidateQCRibbonProduct - QC Ribbon is not in progress or pending:", qcRibbon.Status)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Ribbon is not in progress or pending",
+		})
+	}
+
+	// If QC Ribbon is pending, check if the user is the one who marked it as pending
+	if qcRibbon.Status == "pending" {
+		userIDStr := c.Locals("userId").(string)
+		userID, err := strconv.ParseUint(userIDStr, 10, 32)
+		if err != nil {
+			log.Println("ValidateQCRibbonProduct - Invalid user ID:", err)
+			return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid user ID",
+			})
+		}
+
+		if qcRibbon.QCBy != uint(userID) {
+			log.Println("ValidateQCRibbonProduct - User is not the one who marked QC Ribbon as pending:", userID)
+		}
+	}
+
+	// Search the target order by tracking number from QC ribbon record
+	var order models.Order
+	if err := qcrc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("tracking_number = ?", qcRibbon.TrackingNumber).First(&order).Error; err != nil {
+		log.Println("ValidateQCRibbonProduct - No order found with tracking number:", qcRibbon.TrackingNumber)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "No order found with tracking number " + qcRibbon.TrackingNumber,
+		})
+	}
+
+	// Find matching order detail by SKU
+	var matchedDetail *models.OrderDetail
+	for i := range order.OrderDetails {
+		if order.OrderDetails[i].SKU == req.SKU {
+			matchedDetail = &order.OrderDetails[i]
+			break
+		}
+	}
+
+	// Check if product SKU exists in order details
+	if matchedDetail == nil {
+		log.Println("ValidateQCRibbonProduct - Product not found in order details:", req.SKU)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Product with SKU " + req.SKU + " not found in order details",
+		})
+	}
+
+	// Check if quantity matches
+	if matchedDetail.Quantity != req.Quantity {
+		log.Println("ValidateQCRibbonProduct - Quantity mismatch for product:", req.SKU)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Quantity mismatch for SKU %s. Expected: %d, Got: %d", req.SKU, matchedDetail.Quantity, req.Quantity),
+		})
+	}
+
+	// Update the is_valid flag to true
+	if err := qcrc.DB.Model(&models.OrderDetail{}).Where("id = ?", matchedDetail.ID).Update("is_valid", true).Error; err != nil {
+		log.Println("ValidateQCRibbonProduct - Failed to update order detail:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order detail for product with SKU " + req.SKU,
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Ribbon items with SKU " + req.SKU + " validated successfully",
+		Data:    qcRibbon.ToResponse(),
+	})
+}
+
+// CompleteQcRibbon adding box details and marking QC Ribbon as completed
+// @Summary Complete QC Ribbon
+// @Description Add box details and mark QC Ribbon as completed
+// @Tags Ribbons
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "QC Ribbon ID"
+// @Param qcRibbon body CreateQCRibbonDetailRequest true "QC Ribbon Details"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCRibbonResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/ribbons/qc-ribbons/{id}/complete [put]
+func (qcrc *QCRibbonController) CompleteQcRibbon(c fiber.Ctx) error {
+	log.Println("CompleteQcRibbon called")
+	// Parse id parameter
+	id := c.Params("id")
+	var qcRibbon models.QCRibbon
+	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcRibbon).Error; err != nil {
+		log.Println("CompleteQcRibbon - QC Ribbon not found:", err)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Ribbon with id " + id + " not found.",
+		})
+	}
+
+	// Binding request body
+	var req CreateQCRibbonDetailRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CompleteQcRibbon - Invalid request body:", err)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Check if QC Ribbon is in progress or pending
+	if qcRibbon.Status != "in_progress" && qcRibbon.Status != "pending" {
+		log.Println("CompleteQcRibbon - QC Ribbon is not in progress or pending:", qcRibbon.Status)
+		return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+			Success: true,
+			Message: "QC Ribbon is not in progress or pending",
+			Data:    qcRibbon.ToResponse(),
+		})
+	}
+
+	// If QC Ribbon is pending, check if the user is the one who marked it as pending
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		log.Println("CompleteQcRibbon - Invalid user ID:", err)
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	if qcRibbon.Status == "pending" && qcRibbon.QCBy != uint(userID) {
+		log.Println("CompleteQcRibbon - User is not the one who marked QC Ribbon as pending:", userID)
+	}
+
+	// Check if order details have been validated
+	var order models.Order
+	if err := qcrc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcRibbon.TrackingNumber).First(&order).Error; err != nil {
+		log.Println("CompleteQcRibbon - No order found with tracking number:", qcRibbon.TrackingNumber)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "No order found with tracking number " + qcRibbon.TrackingNumber,
+		})
+	}
+
+	for _, detail := range order.OrderDetails {
+		if !detail.IsValid {
+			log.Println("CompleteQcRibbon - Order details not validated:", qcRibbon.TrackingNumber)
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Order details not validated",
+			})
+		}
+	}
+
+	// Validate all boxes exist and no duplicates
+	boxIDSet := make(map[uint]bool)
+	for _, detailReq := range req.Details {
+		// Check for duplicate box IDs in the request
+		if boxIDSet[detailReq.BoxID] {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Duplicate box ID in the request",
+			})
+		}
+		boxIDSet[detailReq.BoxID] = true
+	}
+
+	// Start database transaction
+	tx := qcrc.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create QCRibbonDetails records
+	for _, detailReq := range req.Details {
+		qcRibbonDetail := models.QCRibbonDetail{
+			QCRibbonID: qcRibbon.ID,
+			BoxID:      detailReq.BoxID,
+			Quantity:   detailReq.Quantity,
+		}
+		qcRibbon.QCRibbonDetails = append(qcRibbon.QCRibbonDetails, qcRibbonDetail)
+	}
+	if err := tx.Create(&qcRibbon.QCRibbonDetails).Error; err != nil {
+		tx.Rollback()
+		log.Println("CompleteQcRibbon - Failed to create QC Ribbon details:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to create QC Ribbon details",
+		})
+	}
+
+	// Update QC Ribbon status to completed
+	qcRibbon.Status = "completed"
+	if err := tx.Save(&qcRibbon).Error; err != nil {
+		tx.Rollback()
+		log.Println("CompleteQcRibbon - Failed to update QC Ribbon status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to complete QC Ribbon",
+		})
+	}
+
+	// Update order processing status to "qc_completed"
+	if err := tx.Model(&models.Order{}).Where("tracking_number = ?", qcRibbon.TrackingNumber).Update("processing_status", "qc_completed").Error; err != nil {
+		tx.Rollback()
+		log.Println("CompleteQcRibbon - Failed to update order processing status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order processing status",
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		log.Println("CompleteQcRibbon - Failed to commit transaction:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to commit transaction",
+		})
+	}
+
+	// Reload the updated record with all relationships for response
+	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").First(&qcRibbon, qcRibbon.ID).Error; err != nil {
+		log.Println("CompleteQcRibbon - Failed to load updated QC Ribbon:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to load updated QC Ribbon",
+		})
+	}
+
+	// load order by tracking number
+	if err := qcrc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("tracking_number = ?", qcRibbon.TrackingNumber).First(&order).Error; err == nil {
+		qcRibbon.Order = &order
+	}
+
+	log.Println("CompleteQcRibbon completed successfully")
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Ribbon completed successfully",
+		Data:    qcRibbon.ToResponse(),
+	})
+}
+
+// PendingQCRibbon marks a QC Ribbon as pending
+// @Summary Pending QC Ribbon
+// @Description Mark a QC Ribbon as pending
+// @Tags Ribbons
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "QC Ribbon ID"
+// @Success 200 {object} utils.SuccessResponse(data=models.QCRibbonResponse)
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/ribbons/qc-ribbons/{id}/pending [put]
+func (qcrc *QCRibbonController) PendingQCRibbon(c fiber.Ctx) error {
+	log.Println("PendingQCRibbon called")
+	// Parse id parameter
+	id := c.Params("id")
+	var qcRibbon models.QCRibbon
+	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcRibbon).Error; err != nil {
+		log.Println("PendingQCRibbon - QC Ribbon not found:", err)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Ribbon with id " + id + " not found.",
+		})
+	}
+
+	// Check if QC Ribbon is in progress
+	if qcRibbon.Status != "in_progress" {
+		log.Println("PendingQCRibbon - QC Ribbon is not in progress:", qcRibbon.Status)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Ribbon is not in progress",
+		})
+	}
+
+	// Update QC Ribbon status to pending
+	qcRibbon.Status = "pending"
+	if err := qcrc.DB.Save(&qcRibbon).Error; err != nil {
+		log.Println("PendingQCRibbon - Failed to update QC Ribbon status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to mark QC Ribbon as pending",
+		})
+	}
+
+	// Reload the updated record with all relationships for response
+	if err := qcrc.DB.Preload("QCRibbonDetails.Box").Preload("QCUser").First(&qcRibbon, qcRibbon.ID).Error; err != nil {
+		log.Println("PendingQCRibbon - Failed to load updated QC Ribbon:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to load updated QC Ribbon",
+		})
+	}
+
+	// Load order by tracking number
+	var order models.Order
+	if err := qcrc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("tracking_number = ?", qcRibbon.TrackingNumber).First(&order).Error; err == nil {
+		qcRibbon.Order = &order
+	}
+
+	log.Println("PendingQCRibbon completed successfully")
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Ribbon marked as pending successfully",
+		Data:    qcRibbon.ToResponse(),
 	})
 }

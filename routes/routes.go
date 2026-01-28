@@ -289,7 +289,10 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	qcRibbonRoutes.Get("/qc-ribbons/chart", qcRibbonController.GetChartQCRibbons)
 	qcRibbonRoutes.Get("/qc-ribbons", qcRibbonController.GetQCRibbons)
 	qcRibbonRoutes.Get("/qc-ribbons/:id", qcRibbonController.GetQCRibbon)
-	qcRibbonRoutes.Post("/qc-ribbons", qcRibbonController.CreateQCRibbon)
+	qcRibbonRoutes.Post("/qc-ribbons/start", qcRibbonController.QCRibbonStart)
+	qcRibbonRoutes.Put("/qc-ribbons/:id/validate", qcRibbonController.ValidateQCRibbonProduct)
+	qcRibbonRoutes.Put("/qc-ribbons/:id/complete", qcRibbonController.CompleteQcRibbon)
+	qcRibbonRoutes.Put("/qc-ribbons/:id/pending", qcRibbonController.PendingQCRibbon)
 
 	// Ribbon flow routes
 	qcRibbonRoutes.Get("/flows", ribbonFlowController.GetRibbonFlows)

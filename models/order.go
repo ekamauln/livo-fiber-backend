@@ -47,6 +47,7 @@ type OrderDetail struct {
 	Variant     string `gorm:"type:varchar(100)" json:"variant"`
 	Quantity    int    `gorm:"not null" json:"quantity"`
 	Price       int    `gorm:"not null" json:"price"`
+	IsValid     bool   `gorm:"default:false" json:"is_valid"`
 
 	Order   *Order   `gorm:"foreignKey:OrderID" json:"-"`
 	Product *Product `gorm:"-" json:"product,omitempty"`
@@ -89,6 +90,7 @@ type OrderDetailResponse struct {
 	Variant     string `json:"variant"`
 	Quantity    int    `json:"quantity"`
 	Price       int    `json:"price"`
+	IsValid     bool   `json:"isValid"`
 
 	Product *ProductResponse `json:"product,omitempty"`
 }
@@ -103,6 +105,7 @@ func (o *Order) ToOrderResponse() *OrderResponse {
 			Variant:     detail.Variant,
 			Quantity:    detail.Quantity,
 			Price:       detail.Price,
+			IsValid:     detail.IsValid,
 		}
 
 		// Include product data if exists

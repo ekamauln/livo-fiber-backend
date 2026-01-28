@@ -6,6 +6,7 @@ type QCRibbon struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
 	TrackingNumber string    `gorm:"uniqueIndex;not null;type:varchar(100)" json:"tracking_number"`
 	QCBy           uint      `gorm:"not null" json:"qc_by"`
+	Status         string    `gorm:"default:'in_progress';type:varchar(50)" json:"status"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	Complained     bool      `gorm:"default:false" json:"complained"`
@@ -30,6 +31,7 @@ type QCRibbonResponse struct {
 	ID             uint                     `json:"id"`
 	TrackingNumber string                   `json:"trackingNumber"`
 	QCBy           string                   `json:"qcBy"`
+	Status         string                   `json:"status"`
 	CreatedAt      string                   `json:"createdAt"`
 	UpdatedAt      string                   `json:"updatedAt"`
 	Complained     bool                     `json:"complained"`
@@ -58,6 +60,19 @@ func (qcr *QCRibbon) ToResponse() *QCRibbonResponse {
 		details[i] = detailResp
 	}
 
+	// Status visual handlers
+	var status string
+	switch qcr.Status {
+	case "in_progress":
+		status = "In Progress"
+	case "completed":
+		status = "Completed"
+	case "cancelled":
+		status = "Cancelled"
+	case "pending":
+		status = "Pending"
+	}
+
 	// User visual handlers
 	var qcBy string
 	if qcr.QCUser != nil {
@@ -74,6 +89,7 @@ func (qcr *QCRibbon) ToResponse() *QCRibbonResponse {
 		ID:             qcr.ID,
 		TrackingNumber: qcr.TrackingNumber,
 		QCBy:           qcBy,
+		Status:         status,
 		CreatedAt:      qcr.CreatedAt.Format("02-01-2006 15:04:05"),
 		UpdatedAt:      qcr.UpdatedAt.Format("02-01-2006 15:04:05"),
 		Complained:     qcr.Complained,
