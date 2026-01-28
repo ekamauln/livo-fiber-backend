@@ -26,7 +26,7 @@ type QCRibbonStartRequest struct {
 	TrackingNumber string `json:"trackingNumber" validate:"required"`
 }
 
-type ValidateQCRibbonProductsRequest struct {
+type ValidateQCRibbonProductRequest struct {
 	SKU      string `json:"sku" validate:"required"`
 	Quantity int    `json:"quantity" validate:"required,min=1"`
 }
@@ -340,6 +340,7 @@ func (qcrc *QCRibbonController) QCRibbonStart(c fiber.Ctx) error {
 			Error:   "Failed to start QC Ribbon processing",
 		})
 	}
+
 	order.ProcessingStatus = "qc_progress"
 	if err := tx.Save(&order).Error; err != nil {
 		tx.Rollback()
@@ -367,15 +368,15 @@ func (qcrc *QCRibbonController) QCRibbonStart(c fiber.Ctx) error {
 	})
 }
 
-// ValidateQCRibbonProduct validates the QC Ribbon Details items or products by SKU and quantity
-// @Summary Validate QC Ribbon Items
-// @Description Validate the QC Ribbon Details items or products by SKU and quantity
+// ValidateQCRibbonProduct validates the QC Ribbon Details items or product by SKU and quantity
+// @Summary Validate QC Ribbon Product
+// @Description Validate the QC Ribbon Details items or product by SKU and quantity
 // @Tags Ribbons
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "QC Ribbon ID"
-// @Param qcRibbon body ValidateQCRibbonProductsRequest true "QC Ribbon Details Items"
+// @Param qcRibbon body ValidateQCRibbonProductRequest true "QC Ribbon Details Items"
 // @Success 200 {object} utils.SuccessResponse(data=models.QCRibbonResponse)
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
@@ -395,7 +396,7 @@ func (qcrc *QCRibbonController) ValidateQCRibbonProduct(c fiber.Ctx) error {
 	}
 
 	// Binding request body
-	var req ValidateQCRibbonProductsRequest
+	var req ValidateQCRibbonProductRequest
 	if err := c.Bind().JSON(&req); err != nil {
 		log.Println("ValidateQCRibbonProduct - Invalid request body:", err)
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
@@ -499,6 +500,7 @@ func (qcrc *QCRibbonController) ValidateQCRibbonProduct(c fiber.Ctx) error {
 // @Router /api/ribbons/qc-ribbons/{id}/complete [put]
 func (qcrc *QCRibbonController) CompleteQcRibbon(c fiber.Ctx) error {
 	log.Println("CompleteQcRibbon called")
+
 	// Parse id parameter
 	id := c.Params("id")
 	var qcRibbon models.QCRibbon
@@ -543,6 +545,10 @@ func (qcrc *QCRibbonController) CompleteQcRibbon(c fiber.Ctx) error {
 
 	if qcRibbon.Status == "pending" && qcRibbon.QCBy != uint(userID) {
 		log.Println("CompleteQcRibbon - User is not the one who marked QC Ribbon as pending:", userID)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Only the user who marked the QC Ribbon as pending can complete it",
+		})
 	}
 
 	// Check if order details have been validated
@@ -671,6 +677,7 @@ func (qcrc *QCRibbonController) CompleteQcRibbon(c fiber.Ctx) error {
 // @Router /api/ribbons/qc-ribbons/{id}/pending [put]
 func (qcrc *QCRibbonController) PendingQCRibbon(c fiber.Ctx) error {
 	log.Println("PendingQCRibbon called")
+
 	// Parse id parameter
 	id := c.Params("id")
 	var qcRibbon models.QCRibbon

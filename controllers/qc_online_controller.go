@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"fmt"
-	"livo-fiber-backend/database"
 	"livo-fiber-backend/models"
 	"livo-fiber-backend/utils"
 	"log"
@@ -23,14 +22,22 @@ func NewQCOnlineController(db *gorm.DB) *QCOnlineController {
 }
 
 // Request structs
-type CreateQCOnlineRequest struct {
-	TrackingNumber string                  `json:"trackingNumber" validate:"required"`
-	Details        []QCOnlineDetailRequest `json:"details" validate:"required,dive,required"`
+type QCOnlineStartRequest struct {
+	TrackingNumber string `json:"trackingNumber" validate:"required"`
 }
 
-type QCOnlineDetailRequest struct {
+type ValidateQCOnlineProductRequest struct {
+	SKU      string `json:"sku" validate:"required"`
+	Quantity int    `json:"quantity" validate:"required,min=1"`
+}
+
+type CreateQCOnlineDetail struct {
 	BoxID    uint `json:"boxId" validate:"required"`
 	Quantity int  `json:"quantity" validate:"required,min=1"`
+}
+
+type CreateQCOnlineDetailRequest struct {
+	Details []CreateQCRibbonDetail `json:"details" validate:"required,dive,required"`
 }
 
 // Unique response structs
@@ -187,181 +194,6 @@ func (qcoc *QCOnlineController) GetQCOnline(c fiber.Ctx) error {
 	})
 }
 
-// CreateQCOnline creates a new QC Online
-// @Summary Create QC Online
-// @Description Create a new QC Online
-// @Tags Onlines
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param qcOnline body CreateQCOnlineRequest true "QC Online details"
-// @Success 201 {object} utils.SuccessResponse{data=models.QCOnlineResponse}
-// @Failure 400 {object} utils.ErrorResponse
-// @Failure 401 {object} utils.ErrorResponse
-// @Failure 409 {object} utils.ErrorResponse
-// @Failure 500 {object} utils.ErrorResponse
-// @Router /api/onlines/qc-onlines [post]
-func (qcoc *QCOnlineController) CreateQCOnline(c fiber.Ctx) error {
-	log.Println("CreateQCOnline called")
-	// Binding request body
-	var req CreateQCOnlineRequest
-	if err := c.Bind().JSON(&req); err != nil {
-		log.Println("CreateQCOnline - Invalid request body:", err)
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-	}
-
-	// Convert tracking number to uppercase and trim spaces
-	req.TrackingNumber = strings.ToUpper(strings.TrimSpace(req.TrackingNumber))
-
-	// Check for existing QC Online with same tracking number
-	var existingQCOnline models.QCOnline
-	if err := qcoc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingQCOnline).Error; err == nil {
-		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "QC Online with the same " + req.TrackingNumber + " already exists.",
-		})
-	}
-
-	// Get current logged in user from context
-	userIDStr := c.Locals("userId").(string)
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Invalid user ID",
-		})
-	}
-
-	// Check if tracking number already exists in QC Ribbon
-	var existingQCRibbon models.QCRibbon
-	if err := qcoc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingQCRibbon).Error; err == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Tracking number " + req.TrackingNumber + " already exists in QC Ribbon records.",
-		})
-	}
-
-	// Check if tracking number exists in orders and have processing status "picking_completed"
-	var order models.Order
-	if err := qcoc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "picking_completed").First(&order).Error; err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "No order found with tracking number " + req.TrackingNumber + " in picking completed status.",
-		})
-	}
-
-	// Check if order processing status is already "qc_completed"
-	if order.ProcessingStatus == "qc_completed" {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Order with tracking number " + req.TrackingNumber + " is already in QC completed status.",
-		})
-	}
-
-	// Validate all boxes exist and no duplicates
-	boxIDSet := make(map[uint]bool)
-	for _, detailReq := range req.Details {
-		// Check for duplicate box IDs in the request
-		if boxIDSet[detailReq.BoxID] {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-				Success: false,
-				Error:   "Duplicate box ID in the request",
-			})
-		}
-		boxIDSet[detailReq.BoxID] = true
-
-		// Check if box exists
-		var box models.Box
-		if err := qcoc.DB.Where("id = ?", detailReq.BoxID).First(&box).Error; err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-				Success: false,
-				Error:   "Box with ID " + strconv.FormatUint(uint64(detailReq.BoxID), 10) + " does not exist",
-			})
-		}
-
-		// Validate quantity
-		if detailReq.Quantity <= 0 {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
-				Success: false,
-				Error:   "Quantity must be greater than zero for box ID " + strconv.FormatUint(uint64(detailReq.BoxID), 10),
-			})
-		}
-	}
-
-	// Start database transaction
-	tx := database.DB.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Create QCOnline record
-	qcOnline := models.QCOnline{
-		TrackingNumber: req.TrackingNumber,
-		QCBy:           uint(userID),
-	}
-
-	// Create QCOnlineDetails records
-	for _, detailReq := range req.Details {
-		qcOnlineDetail := models.QCOnlineDetail{
-			BoxID:    detailReq.BoxID,
-			Quantity: detailReq.Quantity,
-		}
-		qcOnline.QCOnlineDetails = append(qcOnline.QCOnlineDetails, qcOnlineDetail)
-	}
-
-	// Create records in the database (GORM will cascade to details automatically)
-	if err := tx.Create(&qcOnline).Error; err != nil {
-		tx.Rollback()
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to create QC online record",
-		})
-	}
-
-	// Update order processing status to "qc_completed"
-	if err := tx.Model(&models.Order{}).Where("tracking_number = ?", req.TrackingNumber).Update("processing_status", "qc_completed").Error; err != nil {
-		tx.Rollback()
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to update order processing status",
-		})
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to commit transaction",
-		})
-	}
-
-	// Reload the created record with all relationships for response
-	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Preload("QCUser").First(&qcOnline, qcOnline.ID).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Failed to load created QC online",
-		})
-	}
-
-	// Load order by tracking number
-	var orderResponse models.Order
-	if err := qcoc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcOnline.TrackingNumber).First(&orderResponse).Error; err == nil {
-		qcOnline.Order = &orderResponse
-	}
-
-	log.Println("CreateQCOnline completed successfully")
-	return c.Status(fiber.StatusCreated).JSON(utils.SuccessResponse{
-		Success: true,
-		Message: "QC online created successfully",
-		Data:    qcOnline.ToResponse(),
-	})
-}
-
 // GetChartQcOnlines retrieves QC Online data for charting
 // @Summary Get Chart QC Onlines
 // @Description Retrieve QC Online data for charting
@@ -421,5 +253,479 @@ func (qcoc *QCOnlineController) GetChartQCOnlines(c fiber.Ctx) error {
 		Success: true,
 		Message: message,
 		Data:    response,
+	})
+}
+
+// QCOnlineStart Starting QC Online processing for an order
+// @Summary Start QC Online Processing
+// @Description Mark an order as in QC Online processing
+// @Tags Onlines
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param trackingNumber body QCRibbonStartRequest true "Tracking Number"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCOnlineResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/onlines/qc-onlines/start [post]
+func (qcoc *QCOnlineController) QCOnlineStart(c fiber.Ctx) error {
+	log.Println("QCOnlineStart called")
+
+	// Binding request body
+	var req QCOnlineStartRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("QCOnlineStart - Invalid request body:", err)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Getting current logged in user from context
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	// Convert tracking number to uppercase and trim spaces
+	req.TrackingNumber = strings.ToUpper(strings.TrimSpace(req.TrackingNumber))
+
+	// Duplicate check in QCOnline
+	var existingQCOnline models.QCOnline
+	if err := qcoc.DB.Where("tracking_number = ?", req.TrackingNumber).First(&existingQCOnline).Error; err == nil {
+		log.Println("QCOnlineStart - Tracking number already in QC Online records:", req.TrackingNumber)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Tracking number " + req.TrackingNumber + " is already in QC Online processing.",
+		})
+	}
+
+	// Check if tracking number exists in orders and have processing status "picking_completed"
+	var order models.Order
+	if err := qcoc.DB.Where("tracking_number = ? AND processing_status = ?", req.TrackingNumber, "picking_completed").First(&order).Error; err != nil {
+		log.Println("QCOnlineStart - No order found with tracking number in picking completed status:", req.TrackingNumber)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "No order found with tracking number " + req.TrackingNumber + " in picking completed status.",
+		})
+	}
+
+	// Start database transaction
+	tx := qcoc.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create QCOnline record and update order processing status to "qc_progress"
+	qcOnline := models.QCOnline{
+		TrackingNumber: req.TrackingNumber,
+		QCBy:           uint(userID),
+		Status:         "in_progress",
+		Complained:     false,
+	}
+
+	if err := tx.Create(&qcOnline).Error; err != nil {
+		tx.Rollback()
+		log.Println("QCOnlineStart - Failed to create QC Online record:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to start QC Online processing",
+		})
+	}
+
+	order.ProcessingStatus = "qc_progress"
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		log.Println("QCOnlineStart - Failed to update order processing status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order processing status",
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		log.Println("QCOnlineStart - Failed to commit transaction:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to start QC Online processing",
+		})
+	}
+
+	log.Println("QCOnlineStart completed successfully")
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Online processing started successfully",
+		Data:    qcOnline.ToResponse(),
+	})
+}
+
+// ValidateQCOnlineProduct validates the QC Online Details items or product by SKU and quantity
+// @Summary Validate QC Online Product
+// @Description Validate the QC Online Details items or product by SKU and quantity
+// @Tags Onlines
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "QC Online ID"
+// @Param qcOnline body ValidateQCOnlineProductRequest true "QC Online Details Items"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCOnlineDetailResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/onlines/qc-onlines/{id}/validate [post]
+func (qcoc *QCOnlineController) ValidateQCOnlineProduct(c fiber.Ctx) error {
+	log.Println("ValidateQCOnlineProduct called")
+	// Parse id parameter
+	id := c.Params("id")
+	var qcOnline models.QCOnline
+	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Where("id = ?", id).First(&qcOnline).Error; err != nil {
+		log.Println("ValidateQCOnlineProduct - QC Online not found:", err)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Online with id " + id + " not found.",
+		})
+	}
+
+	// Binding request body
+	var req ValidateQCOnlineProductRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("ValidateQCOnlineProduct - Invalid request body:", err)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Check if QC Online is in progress or pending
+	if qcOnline.Status != "in_progress" && qcOnline.Status != "pending" {
+		log.Println("ValidateQCOnlineProduct - QC Online is not in progress or pending:", qcOnline.Status)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Online is not in progress or pending",
+		})
+	}
+
+	// If QC Online is pending, check if the user is the one who marked it as pending
+	if qcOnline.Status == "pending" {
+		userIDStr := c.Locals("userId").(string)
+		userID, err := strconv.ParseUint(userIDStr, 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Invalid user ID",
+			})
+		}
+
+		if qcOnline.QCBy != uint(userID) {
+			log.Println("ValidateQCOnlineProduct - User is not the one who marked QC Online as pending:", userID)
+		}
+	}
+
+	// Search the target order by tracking number from QC online record
+	var order models.Order
+	if err := qcoc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("tracking_number = ?", qcOnline.TrackingNumber).First(&order).Error; err != nil {
+		log.Println("ValidateQCOnlineProduct - No order found with tracking number:", qcOnline.TrackingNumber)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "No order found with tracking number " + qcOnline.TrackingNumber,
+		})
+	}
+
+	// Find matching order detail by SKU
+	var matchedDetail *models.OrderDetail
+	for i := range order.OrderDetails {
+		if order.OrderDetails[i].SKU == req.SKU {
+			matchedDetail = &order.OrderDetails[i]
+			break
+		}
+	}
+
+	// Check if product SKU exists in order details
+	if matchedDetail == nil {
+		log.Println("ValidatedQCOnlineProduct - Product not found in order details:", req.SKU)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Product with SKU " + req.SKU + " not found in order details.",
+		})
+	}
+
+	// Check if quantity matches
+	if matchedDetail.Quantity != req.Quantity {
+		log.Println("ValidateQCOnlineProduct - Quantity mismatch for product:", req.SKU)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Quantity mismatch for SKU %s. Expected: %d, Got: %d", req.SKU, matchedDetail.Quantity, req.Quantity),
+		})
+	}
+
+	// Update the is_valid flag to true
+	if err := qcoc.DB.Model(&models.OrderDetail{}).Where("id = ?", matchedDetail.ID).Update("is_valid", true).Error; err != nil {
+		log.Println("ValidateQCOnlineProduct - Failed to update order detail:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order detail for product with SKU " + req.SKU,
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "Product with SKU " + req.SKU + " validated successfully.",
+		Data:    qcOnline.ToResponse(),
+	})
+}
+
+// CompleteQcOnline adding box details and marking QC Online as completed.
+// @Summary Complete QC Online
+// @Description Add box details and mark QC Online as completed
+// @Tags Onlines
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "QC Online ID"
+// @Param qcOnline body CreateQCOnlineDetailRequest true "QC Online Box Details"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCOnlineResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/onlines/qc-onlines/{id}/complete [put]
+func (qcoc *QCOnlineController) CompleteQcOnline(c fiber.Ctx) error {
+	log.Println("CompleteQcOnline called")
+
+	// Parse id parameter
+	id := c.Params("id")
+	var qcOnline models.QCOnline
+	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Where("id = ?", id).First(&qcOnline).Error; err != nil {
+		log.Println("CompleteQcOnline - QC Online not found:", err)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Online with id " + id + " not found.",
+		})
+	}
+
+	// Binding request body
+	var req CreateQCOnlineDetailRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		log.Println("CompleteQcOnline - Invalid request body:", err)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Check if QC Online is in progress or pending
+	if qcOnline.Status != "in_progress" && qcOnline.Status != "pending" {
+		log.Println("CompleteQcOnline - QC Online is not in progress or pending:", qcOnline.Status)
+		return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+			Success: true,
+			Message: "QC Online is not in progress or pending",
+			Data:    qcOnline.ToResponse(),
+		})
+	}
+
+	// If QC Online is pending, check if the user is the one who marked it as pending
+	userIDStr := c.Locals("userId").(string)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		log.Println("CompleteQcOnline - Invalid user ID:", err)
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Invalid user ID",
+		})
+	}
+
+	if qcOnline.Status == "pending" && qcOnline.QCBy != uint(userID) {
+		log.Println("CompleteQcOnline - User is not the one who marked QC Online as pending:", userID)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Only the user who marked the QC Online as pending can complete it",
+		})
+	}
+
+	// Check if order details have been validated
+	var order models.Order
+	if err := qcoc.DB.Preload("OrderDetails").Where("tracking_number = ?", qcOnline.TrackingNumber).First(&order).Error; err != nil {
+		log.Println("CompleteQcOnline - No order found with tracking number:", qcOnline.TrackingNumber)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "No order found with tracking number " + qcOnline.TrackingNumber,
+		})
+	}
+
+	for _, detail := range order.OrderDetails {
+		if !detail.IsValid {
+			log.Println("CompleteQcOnline - Order details not validated:", qcOnline.TrackingNumber)
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Order details not validated",
+			})
+		}
+	}
+
+	// Validate all boxes exist and no duplicates
+	boxIDSet := make(map[uint]bool)
+	for _, detailReq := range req.Details {
+		// Check for duplicate box IDs in the request
+		if boxIDSet[detailReq.BoxID] {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Duplicate box ID in the request",
+			})
+		}
+		boxIDSet[detailReq.BoxID] = true
+	}
+
+	// Start database transaction
+	tx := qcoc.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create QCOnlineDetails records
+	for _, detailReq := range req.Details {
+		qcOnlineDetail := models.QCOnlineDetail{
+			QCOnlineID: qcOnline.ID,
+			BoxID:      detailReq.BoxID,
+			Quantity:   detailReq.Quantity,
+		}
+		qcOnline.QCOnlineDetails = append(qcOnline.QCOnlineDetails, qcOnlineDetail)
+	}
+	if err := tx.Create(&qcOnline.QCOnlineDetails).Error; err != nil {
+		tx.Rollback()
+		log.Println("CompleteQcOnline - Failed to create QC Online details:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to create QC Online details",
+		})
+	}
+
+	// Update QCOnline status to completed
+	qcOnline.Status = "completed"
+	if err := tx.Save(&qcOnline).Error; err != nil {
+		tx.Rollback()
+		log.Println("CompleteQcOnline - Failed to update QC Online status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update QC Online status",
+		})
+	}
+
+	// Update order processing status to "qc_completed"
+	if err := tx.Model(&models.Order{}).Where("tracking_number = ?", qcOnline.TrackingNumber).Update("processing_status", "qc_completed").Error; err != nil {
+		tx.Rollback()
+		log.Println("CompleteQcOnline - Failed to update order processing status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to update order processing status",
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		log.Println("CompleteQcOnline - Failed to commit transaction:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to complete QC Online",
+		})
+	}
+
+	// Reload the updated record with all relationships for response
+	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Preload("QCUser").Where("id = ?", qcOnline.ID).First(&qcOnline).Error; err != nil {
+		log.Println("CompleteQcOnline - Failed to reload QC Online record:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve completed QC Online",
+		})
+	}
+
+	// load order by tracking number
+	if err := qcoc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("tracking_number = ?", qcOnline.TrackingNumber).First(&order).Error; err == nil {
+		qcOnline.Order = &order
+	}
+
+	log.Println("CompleteQcOnline completed successfully")
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Online completed successfully",
+		Data:    qcOnline.ToResponse(),
+	})
+}
+
+// PendingQCOnline marks a QC Online as pending
+// @Summary Pending QC Online
+// @Description Mark a QC Online as pending
+// @Tags Onlines
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "QC Online ID"
+// @Success 200 {object} utils.SuccessResponse{data=models.QCOnlineResponse}
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /api/onlines/qc-onlines/{id}/pending [put]
+func (qcoc *QCOnlineController) PendingQCOnline(c fiber.Ctx) error {
+	log.Println("PendingQCOnline called")
+
+	// Parse id parameter
+	id := c.Params("id")
+	var qcOnline models.QCOnline
+	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Preload("QCUser").Where("id = ?", id).First(&qcOnline).Error; err != nil {
+		log.Println("PendingQCOnline - QC Online not found:", err)
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Online with id " + id + " not found.",
+		})
+	}
+
+	// Check if QC Online is in progress
+	if qcOnline.Status != "in_progress" {
+		log.Println("PendingQCOnline - QC Online is not in progress:", qcOnline.Status)
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "QC Online is not in progress",
+		})
+	}
+
+	// Update QCOnline status to pending
+	qcOnline.Status = "pending"
+	if err := qcoc.DB.Save(&qcOnline).Error; err != nil {
+		log.Println("PendingQCOnline - Failed to update QC Online status:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to mark QC Online as pending",
+		})
+	}
+
+	// Reload the updated record with all relationships for response
+	if err := qcoc.DB.Preload("QCOnlineDetails.Box").Preload("QCUser").Where("id = ?", qcOnline.ID).First(&qcOnline).Error; err != nil {
+		log.Println("PendingQCOnline - Failed to reload QC Online record:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve pending QC Online",
+		})
+	}
+
+	// Load order by tracking number
+	var order models.Order
+	if err := qcoc.DB.Preload("OrderDetails").Preload("AssignUser").Preload("PickUser").Preload("PendingUser").Preload("ChangeUser").Preload("DuplicateUser").Preload("CancelUser").Where("tracking_number = ?", qcOnline.TrackingNumber).First(&order).Error; err == nil {
+		qcOnline.Order = &order
+	}
+
+	log.Println("PendingQCOnline completed successfully")
+	return c.Status(fiber.StatusOK).JSON(utils.SuccessResponse{
+		Success: true,
+		Message: "QC Online marked as pending successfully",
+		Data:    qcOnline.ToResponse(),
 	})
 }

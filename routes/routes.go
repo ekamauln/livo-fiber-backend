@@ -304,7 +304,10 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	qcOnlineRoutes.Get("/qc-onlines/chart", qcOnlineController.GetChartQCOnlines)
 	qcOnlineRoutes.Get("/qc-onlines/", qcOnlineController.GetQCOnlines)
 	qcOnlineRoutes.Get("/qc-onlines/:id", qcOnlineController.GetQCOnline)
-	qcOnlineRoutes.Post("/qc-onlines/", qcOnlineController.CreateQCOnline)
+	qcOnlineRoutes.Post("/qc-onlines/start", qcOnlineController.QCOnlineStart)
+	qcOnlineRoutes.Put("/qc-onlines/:id/validate", qcOnlineController.ValidateQCOnlineProduct)
+	qcOnlineRoutes.Put("/qc-onlines/:id/complete", qcOnlineController.CompleteQcOnline)
+	qcOnlineRoutes.Put("/qc-onlines/:id/pending", qcOnlineController.PendingQCOnline)
 
 	// Online flow routes
 	qcOnlineRoutes.Get("/flows", onlineFlowController.GetOnlineFlows)
