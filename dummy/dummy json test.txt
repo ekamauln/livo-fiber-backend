@@ -1,0 +1,258 @@
+{
+  "orders": [
+    {
+      "orderGineeId": "251208RV3K5H7U",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "N******a",
+      "address": "Jl. Yon Cipto No.8.depan sultan motor, KAB. MOJOKERTO, PACET, JAWA TIMUR, ID, 61374",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05639136992C",
+      "sentBefore": "2025-12-08 23:59:00",
+      "details": [
+        {
+          "productName": "Mejec Kabel HDMI Male-Male 3m Jaring Serat 3 meter HDTV - Cable High Speed Quality Full HD 1080",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "MJ-HDMI-JARING-3M",
+          "price": 15500
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251209U05BXBR0",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "K****l",
+      "address": "Dsn Kramat Desa Paseseh, Jalan Paseseh, RT.0/RW.0, Paseseh, Tanjungbumi, KAB. BANGKALAN, TANJUNGBUMI, JAWA TIMUR, ID, 69156",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05148458309C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "Air Flow Splitter Cabang Pembagi Selang Aerator 2 Lubang Udara Output",
+          "variant": "-",
+          "quantity": 2,
+          "sku": "SUN-PEMBAGI-2",
+          "price": 4800
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208T1QT9P52",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "W******o",
+      "address": "RT.20, Kel / Desa Kota Bangun 3, Dusun Ujung Baru (Rumah kue), KAB. KUTAI KARTANEGARA, KOTA BANGUN, KALIMANTAN TIMUR, ID, 75561",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05120121145C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "Tambahan Perlindungan yaitu Dos Tebal dan Bubble Berlapis-lapis ( Pelindung )",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "TAMBAH-BUBBLE-DOS",
+          "price": 3000
+        },
+        {
+          "productName": "ZK-MT21 Audio Board 50Wx2+100W 2.1 Channel Bluetooth Digital Amplifier Module High and Low Pitch Super Heavy Bass",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "VKS-ZK-MT21",
+          "price": 120000
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251209TN85RU3E",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "P******u",
+      "address": "Tabubu ethnic music, jl.Parangtritis km 4 Saman blok 2 RT 4 no 110x Bangunharjo, KAB. BANTUL, SEWON, DI YOGYAKARTA, ID, 55186",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05759453687C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "Elastic Bandage + Klip 10cm x 4,5m Perban 4\" Elastis 4 inch Wrap 10 cm",
+          "variant": "-",
+          "quantity": 2,
+          "sku": "KINE-EB1045",
+          "price": 9900
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208SW44SPCK",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "A******a",
+      "address": "Jln gnung ringgit dusun karang mulyo rt/rw011/004 jeruk gucialit, KAB. LUMAJANG, GUCIALIT, JAWA TIMUR, ID, 67353",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05115456976C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "1 PCS Elastic Bandage + Klip 10cm x 4,5m Perban 4\" Elastis 4 inch Wrap 10 cm",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "KINE-EB1045",
+          "price": 9900
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208SY18T2XQ",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "A******a",
+      "address": "Jln Rama No 12, KOTA BANDUNG, CICENDO, JAWA BARAT, ID, 40172",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05545523621C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "Pcafc Tang Potong 170 Plier Wire Cutter 5 inch Soft Spring Kawat Coil Gunting Kabel 5\"",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "VKS-TANG-PLATO",
+          "price": 9100
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208T43PAE11",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "D******i",
+      "address": "Rsi asy-syifaa ,Jln,lintas sumatera km 65 yukun jaya, terbNggi besar, KAB. LAMPUNG TENGAH, TERBANGGI BESAR, LAMPUNG, ID, 34162",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05709181919C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "1 PCS Kinesiology Tapping 2.5CM X 5M Kinesiologi Tape Anti Cidera Saat Olahraga Sport Plester Gym Futsal Kinesio",
+          "variant": "PUTIH",
+          "quantity": 1,
+          "sku": "KINE-TAPE-2550-53-NB",
+          "price": 10699
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208T5DUR06B",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "S******a",
+      "address": "Jalan Dusun Karangsono, RT.1/RW.1, Karangtalun, Kalidawir, Arah² Salon Renza Kebarat ± 1km Deketnya Bengkel Parlan (Depan angkring besi), KAB. TULUNGAGUNG, KALIDAWIR, JAWA TIMUR, ID, 66281",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05308733954C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "Pcafc Tang Potong 170 Plier Wire Cutter 5 inch Soft Spring Kawat Coil Gunting Kabel 5\"",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "VKS-TANG-PLATO",
+          "price": 9100
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208T0N81V84",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "A******n",
+      "address": "Jalan Sawojajar Gang XXI No. 28b, RT.4/RW.4, Kelurahan Sawojajar, Kedungkandang, KOTA MALANG, KEDUNGKANDANG, JAWA TIMUR, ID, 65139",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05493633448C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "W 3001 12V DC Thermostat/Termostat Digital XH-W3001 12VDC Temperature Controller",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "VKS-W3001-12",
+          "price": 21300
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208T9UYUT1V",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "S****f",
+      "address": "Pappa e (Taccorong), KAB. BULUKUMBA, GANTORANG/GANTARANG (GANGKING), SULAWESI SELATAN, ID, 92561",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05602584409C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "STC-1000 220V Thermostat/Termostat Digital AC Suhu Temperature Control",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "VKS-STC1000-220",
+          "price": 34500
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208T29NGGT5",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "Z****Q",
+      "address": "Jln. Kyai tamin 1 no. 6, KOTA MALANG, KLOJEN, JAWA TIMUR, ID, 65118",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05735045618C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "Modul TP4056 Power Bank Li-ion Charger PROTECTION 5V 1A Micro USB Type C",
+          "variant": "TYPE C",
+          "quantity": 1,
+          "sku": "VKS-TP4056-C",
+          "price": 3500
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251208T7PMMA15",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "M******",
+      "address": "Sma Al Hikmah Boarding School, Jalan Batul Arjuno, RT.56/RW.7, Dsn. Sabrangbendo, Ds. Giripurno, Bumiaji (Kelas 10), KOTA BATU, BUMIAJI, JAWA TIMUR, ID, 65333",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05938331613C",
+      "sentBefore": "2025-12-09 23:59:00",
+      "details": [
+        {
+          "productName": "1 PCS Kinesiologi Tape 5CM X 2.5M Kinesiology Tapping Saat Olahraga Sport Plester Kinesio Anti Cidera",
+          "variant": "BIRU MUDA",
+          "quantity": 1,
+          "sku": "KINE-TAPE-5025-J35",
+          "price": 13249
+        }
+      ]
+    },
+    {
+      "orderGineeId": "251205J20S76N2",
+      "channel": "Shopee",
+      "store": "SP Aqua",
+      "buyer": "A******r",
+      "address": "Jalan Iskandar Muda, Kutacane, Babussalam, Perapat Hulu Samping Hotel Eka Jaya (Samping htl eka jaya), KAB. ACEH TENGGARA, BABUSSALAM, NANGGROE ACEH DARUSSALAM (NAD), ID, 24611",
+      "courier": "SPX Hemat",
+      "trackingNumber": "SPXID05080366003C",
+      "sentBefore": "2025-12-12 23:59:00",
+      "details": [
+        {
+          "productName": "BION  Wireless Doorbell AC 150 Meter Waterproof Remote Bel Pintu Rumah Tanpa Kabel 3 Remote 1 Bell",
+          "variant": "-",
+          "quantity": 1,
+          "sku": "CAZ-BION-A20-3R+1B",
+          "price": 108500
+        }
+      ]
+    }
+  ]
+}
