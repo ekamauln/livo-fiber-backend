@@ -14,8 +14,10 @@ type Session struct {
 	UserAgent    string    `gorm:"type:text" json:"user_agent"`
 	IPAddress    string    `gorm:"type:varchar(50)" json:"ip_address"`
 	DeviceType   string    `gorm:"type:varchar(20)" json:"device_type"` // web or mobile
-	ExpiresAt    time.Time `gorm:"not null" json:"expires_at"`
-	CreatedAt    time.Time `json:"created_at"`
+	OldRefreshToken string    `gorm:"type:text" json:"-"`
+	RotatedAt       time.Time `json:"rotated_at"`
+	ExpiresAt       time.Time `gorm:"not null" json:"expires_at"`
+	CreatedAt       time.Time `json:"created_at"`
 
 	User User `gorm:"foreignKey:UserID" json:"-"`
 }

@@ -393,14 +393,29 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 		})
 	}
 
-	// Get session
+	// Get session - check both current and old refresh token (for grace period)
 	var session models.Session
-	if err := database.DB.Preload("User.Roles").Where("refresh_token = ?", refreshToken).First(&session).Error; err != nil {
+	if err := database.DB.Preload("User.Roles").
+		Where("refresh_token = ? OR old_refresh_token = ?", refreshToken, refreshToken).
+		First(&session).Error; err != nil {
 		log.Println("Session not found for refresh token:", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
 			Success: false,
 			Error:   "Sesi tidak ditemukan",
 		})
+	}
+
+	// Grace Period Check: If using old token, allow if rotated recently
+	isGracePeriod := refreshToken == session.OldRefreshToken
+	if isGracePeriod {
+		if time.Since(session.RotatedAt) > 30*time.Second {
+			log.Println("Old refresh token used after grace period for userID:", session.UserID)
+			return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Refresh token lama sudah tidak berlaku",
+			})
+		}
+		log.Println("Grace period hit for userID:", session.UserID)
 	}
 
 	// Check if session expired
@@ -435,20 +450,28 @@ func (ac *AuthController) RefreshToken(c fiber.Ctx) error {
 		})
 	}
 
-	// Optionally rotate refresh token
-	newRefreshToken, err := utils.GenerateRefreshToken(claims, ac.Config)
-	if err != nil {
-		log.Println("Failed to generate refresh token:", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
-			Success: false,
-			Error:   "Gagal menghasilkan refresh token",
-		})
-	}
+	var newRefreshToken string
+	if isGracePeriod {
+		// Use the ALREADY rotated token if within grace period
+		newRefreshToken = session.RefreshToken
+	} else {
+		// Normal Rotation: generate NEW refresh token
+		newRefreshToken, err = utils.GenerateRefreshToken(claims, ac.Config)
+		if err != nil {
+			log.Println("Failed to generate refresh token:", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+				Success: false,
+				Error:   "Gagal menghasilkan refresh token",
+			})
+		}
 
-	// Update session
-	session.RefreshToken = newRefreshToken
-	session.ExpiresAt = time.Now().Add(time.Duration(ac.Config.RefreshTokenTTL) * 24 * time.Hour)
-	database.DB.Save(&session)
+		// Update session for rotation
+		session.OldRefreshToken = session.RefreshToken
+		session.RefreshToken = newRefreshToken
+		session.RotatedAt = time.Now()
+		session.ExpiresAt = time.Now().Add(time.Duration(ac.Config.RefreshTokenTTL) * 24 * time.Hour)
+		database.DB.Save(&session)
+	}
 
 	userResponse := session.User.ToResponse()
 	response := utils.LoginResponse{
