@@ -117,6 +117,7 @@ type DuplicatedOrderResponse struct {
 // @Param startDate query string false "Start date (YYYY-MM-DD format)"
 // @Param endDate query string false "End date (YYYY-MM-DD format)"
 // @Param search query string false "Search term for order ginee id or tracking number"
+// @Param processingStatus query string false "Filter by processing status (comma-separated, e.g. ready_to_pick,picking_completed,qc_completed)"
 // @Success 200 {object} utils.SuccessPaginatedResponse{data=[]models.Order}
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
@@ -168,6 +169,21 @@ func (oc *OrderController) GetOrders(c fiber.Ctx) error {
 		query = query.Where("order_ginee_id ILIKE ? OR tracking_number ILIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 
+	// Processing status filter (comma-separated)
+	processingStatusParam := c.Query("processingStatus", "")
+	var processingStatuses []string
+	if processingStatusParam != "" {
+		for _, s := range strings.Split(processingStatusParam, ",") {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				processingStatuses = append(processingStatuses, s)
+			}
+		}
+		if len(processingStatuses) > 0 {
+			query = query.Where("processing_status IN ?", processingStatuses)
+		}
+	}
+
 	// Get total count for pagination
 	var total int64
 	query.Count(&total)
@@ -213,6 +229,10 @@ func (oc *OrderController) GetOrders(c fiber.Ctx) error {
 
 	if search != "" {
 		filters = append(filters, "search: "+search)
+	}
+
+	if len(processingStatuses) > 0 {
+		filters = append(filters, "processingStatus: "+strings.Join(processingStatuses, ", "))
 	}
 
 	if len(filters) > 0 {
