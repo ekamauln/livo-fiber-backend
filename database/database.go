@@ -101,6 +101,8 @@ func MigrateDatabase() error {
 		&models.QCRibbonDetail{},
 		&models.QCOnline{},
 		&models.QCOnlineDetail{},
+		&models.QCPerformance{},
+		&models.QCPerformanceDetail{},
 		&models.Outbound{},
 		&models.LostFound{},
 		&models.Return{},

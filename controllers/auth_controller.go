@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -200,6 +201,22 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 		})
 	}
 
+	// Check if user already has an active session
+	var activeSession models.Session
+	if err := database.DB.Where("user_id = ? AND expires_at > ?", user.ID, time.Now()).First(&activeSession).Error; err == nil {
+		log.Println("User already logged in on another device:", req.Username)
+		return c.Status(fiber.StatusConflict).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Akun sedang digunakan di perangkat lain. Silakan logout terlebih dahulu.",
+		})
+	} else if err != gorm.ErrRecordNotFound {
+		log.Println("Failed to check active sessions:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse{
+			Success: false,
+			Error:   "Terjadi kesalahan pada server",
+		})
+	}
+
 	// Get role names
 	roleNames := make([]string, len(user.Roles))
 	for i, role := range user.Roles {
@@ -264,6 +281,38 @@ func (ac *AuthController) Login(c fiber.Ctx) error {
 		})
 	}
 
+	// Create QC Performance record if user has qc-ribbon or qc-online roles
+	var qcRole string
+	hasQCRibbon := false
+	hasQCOnline := false
+	for _, roleName := range roleNames {
+		switch roleName {
+		case "qc-ribbon":
+			hasQCRibbon = true
+		case "qc-online":
+			hasQCOnline = true
+		}
+	}
+	if hasQCRibbon && hasQCOnline {
+		qcRole = "qc-ribbon, qc-online"
+	} else if hasQCRibbon {
+		qcRole = "qc-ribbon"
+	} else if hasQCOnline {
+		qcRole = "qc-online"
+	}
+
+	if qcRole != "" {
+		qcPerformance := models.QCPerformance{
+			UserID:    user.ID,
+			SessionID: &session.ID,
+			Role:      qcRole,
+			LoginTime: time.Now(),
+		}
+		if err := database.DB.Create(&qcPerformance).Error; err != nil {
+			log.Println("Failed to create QC Performance record:", err)
+		}
+	}
+
 	// Update last login
 	now := time.Now()
 	user.LastLogin = &now
@@ -318,6 +367,70 @@ func (ac *AuthController) Logout(c fiber.Ctx) error {
 		}
 		if err := c.Bind().Body(&body); err == nil {
 			refreshToken = body.RefreshToken
+		}
+	}
+
+	// Process QC Performance before deleting sessions
+	var sessions []models.Session
+	if refreshToken != "" {
+		database.DB.Where("user_id = ? AND refresh_token = ?", userID, refreshToken).Find(&sessions)
+	} else {
+		database.DB.Where("user_id = ?", userID).Find(&sessions)
+	}
+
+	for _, session := range sessions {
+		var qcPerformance models.QCPerformance
+		if err := database.DB.Where("session_id = ? AND logout_time IS NULL", session.ID).First(&qcPerformance).Error; err == nil {
+			now := time.Now()
+			totalDuration := now.Sub(qcPerformance.LoginTime)
+			totalMinutes := totalDuration.Minutes()
+
+			// Calculate TotalQC and Details
+			var qcRibbons []models.QCRibbon
+			database.DB.Where("qc_by = ? AND updated_at BETWEEN ? AND ?", qcPerformance.UserID, qcPerformance.LoginTime, now).Find(&qcRibbons)
+
+			var qcOnlines []models.QCOnline
+			database.DB.Where("qc_by = ? AND updated_at BETWEEN ? AND ?", qcPerformance.UserID, qcPerformance.LoginTime, now).Find(&qcOnlines)
+
+			totalQC := len(qcRibbons) + len(qcOnlines)
+
+			// Calculate AverageScore
+			var avgScore float64
+			if totalMinutes > 0 {
+				avgScore = float64(totalQC) / totalMinutes
+			}
+
+			if avgScore >= 0.92 {
+				avgScore = 100.0
+			} else {
+				// Proportional to 0.92 (e.g., 0.46 = 50)
+				avgScore = (avgScore / 0.92) * 100.0
+			}
+
+			// Update QCPerformance
+			qcPerformance.LogoutTime = &now
+			qcPerformance.TotalTime = totalDuration
+			qcPerformance.TotalQC = totalQC
+			qcPerformance.AverageScore = decimal.NewFromFloat(avgScore)
+			database.DB.Save(&qcPerformance)
+
+			// Insert Details
+			for _, ribbon := range qcRibbons {
+				detail := models.QCPerformanceDetail{
+					QCPerformanceID: qcPerformance.ID,
+					TrackingNumber:  ribbon.TrackingNumber,
+					Type:            "ribbon",
+				}
+				database.DB.Create(&detail)
+			}
+			for _, online := range qcOnlines {
+				detail := models.QCPerformanceDetail{
+					QCPerformanceID: qcPerformance.ID,
+					TrackingNumber:  online.TrackingNumber,
+					Type:            "online",
+				}
+				database.DB.Create(&detail)
+			}
 		}
 	}
 

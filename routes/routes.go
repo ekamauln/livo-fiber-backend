@@ -29,6 +29,7 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	ribbonFlowController := controllers.NewRibbonFlowController(db)
 	onlineFlowController := controllers.NewOnlineFlowController(db)
 	reportController := controllers.NewReportController(db)
+	qcPerformanceController := controllers.NewQCPerformanceController(db)
 	lostFoundController := controllers.NewLostFoundController(db)
 	returnController := controllers.NewReturnController(db)
 	returnPickedOrderController := controllers.NewPickedOrderController(db)
@@ -348,6 +349,8 @@ func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	reportRoutes.Get("/returns", reportController.GetReturnReports)
 	reportRoutes.Get("/complains", reportController.GetComplainReports)
 	reportRoutes.Get("/user-fees", reportController.GetUserFeeReports)
+	reportRoutes.Get("/qc-performances", middleware.RoleMiddleware([]string{"developer", "superadmin"}), qcPerformanceController.GetQCPerformances)
+	reportRoutes.Get("/qc-performances/:id", middleware.RoleMiddleware([]string{"developer", "superadmin"}), qcPerformanceController.GetQCPerformance)
 
 	// Lost and Found routes
 	lostFoundRoutes := protected.Group("/lost-founds")
