@@ -15,9 +15,9 @@ type QCPerformanceDetail struct {
 
 type QCPerformanceDetailResponse struct {
 	ID             uint   `json:"id"`
-	TrackingNumber string `json:"tracking_number"`
+	TrackingNumber string `json:"trackingNumber"`
 	Type           string `json:"type"`
-	CreatedAt      string `json:"created_at"`
+	CreatedAt      string `json:"createdAt"`
 }
 
 func (qcpd *QCPerformanceDetail) ToResponse() *QCPerformanceDetailResponse {
