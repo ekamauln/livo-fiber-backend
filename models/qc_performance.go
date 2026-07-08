@@ -28,15 +28,15 @@ type QCPerformance struct {
 
 type QCPerformanceResponse struct {
 	ID           uint                          `json:"id"`
-	UserID       uint                          `json:"user_id"`
+	UserID       uint                          `json:"userId"`
 	User         *UserResponse                 `json:"user,omitempty"`
-	SessionID    *uuid.UUID                    `json:"session_id,omitempty"`
+	SessionID    *uuid.UUID                    `json:"sessionId,omitempty"`
 	Role         string                        `json:"role"`
-	LoginTime    string                        `json:"login_time"`
-	LogoutTime   *string                       `json:"logout_time,omitempty"`
-	TotalTime    string                        `json:"total_time_minutes"`
-	TotalQC      int                           `json:"total_qc"`
-	AverageScore string                        `json:"average_score"`
+	LoginTime    string                        `json:"loginTime"`
+	LogoutTime   *string                       `json:"logoutTime,omitempty"`
+	TotalTime    string                        `json:"totalTimeMinutes"`
+	TotalQC      int                           `json:"totalQc"`
+	AverageScore string                        `json:"averageScore"`
 	Details      []QCPerformanceDetailResponse `json:"details,omitempty"`
 }
 
